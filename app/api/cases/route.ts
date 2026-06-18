@@ -47,6 +47,7 @@ export async function POST(req: Request) {
       area: body.area ?? null,
       desired_items: body.desired_items ?? null,
       source: body.source,
+      referrer_ambassador_id: body.referrer_ambassador_id ?? null,
       registered_by: guard.staff.id,
     })
     .select("id")

@@ -113,7 +113,28 @@ from kobutsu_daicho order by transaction_date desc;
 - 仕入原価は**手動入力**（自動按分なし）。原価合計が仕入を超えると残がマイナス表示（警告のみ・ブロックしない）。
 - 粗利は販売時点の原価でスナップショット。
 
-## 7. テスト一覧（現状26件）
+## 6d. Phase 4（紹介フィー）
+
+### マイグレーション
+- `supabase/migrations/0005_phase4_schema.sql` を適用（tk / ambassadors / fee_settings / referral_fees + 2 enum + cases FK）。
+
+### 事前登録（マスタ）
+1. `/settings/tk` で TK を登録（任意）。
+2. `/settings/ambassadors` でアンバサダー登録（TK配下 or 直）。
+3. `/settings/fees` でフィー率を1行登録（適用開始日必須）。**率未登録だとフィーは生成されない**。
+
+### E2E（実機）
+1. 予約登録で source=紹介 を選び、アンバサダーを紐付け。
+2. 買取/回収を入力し精算確定 → `referral_fees` が自動生成（直=本人/TK経由=TK、内訳は記録）。
+3. `/fees` で未払い一覧→「支払済にする」で paid に。
+4. 非紹介案件・アンバサダー未紐付けはフィー生成されない。
+
+### 注意
+- フィーは精算時に1回だけ生成（冪等）。生成後は率を変えても再計算しない。
+- 会社の支払い先は pay_to（直=ambassador / TK経由=tk）。tk_portion/ambassador_portion は記録のみ。
+
+## 7. テスト一覧（現状29件）
+- `lib/fee.test.ts` — 紹介フィー計算（3件）
 - `lib/settlement.test.ts` — 古物台帳の組み立て（2件）
 - `lib/money.test.ts` — netAmount / grossProfit / sumCosts を含む（16件）
 - `lib/money.test.ts` — 金額の決定論集計（8件）

@@ -2,6 +2,7 @@ import { ok, fail, requireStaff } from "@/lib/api";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { sumAmounts, sumWorkFees, netAmount } from "@/lib/money";
 import { buildDaichoRows } from "@/lib/settlement";
+import { computeReferralFee } from "@/lib/fee";
 
 export async function POST(req: Request) {
   const guard = await requireStaff(req);
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
   const c = await db
     .from("cases")
     .select(
-      "id, verification_method, id_media_id, customer:customers(name,address,occupation,birth_year)"
+      "id, verification_method, id_media_id, referrer_ambassador_id, customer:customers(name,address,occupation,birth_year)"
     )
     .eq("id", case_id)
     .maybeSingle();
@@ -99,6 +100,49 @@ export async function POST(req: Request) {
     daicho_count = rows.length;
   }
 
+  // 紹介フィー自動生成（紹介案件のみ・冪等）
+  let referral_fee_total: number | null = null;
+  const refAmbId = (c.data as unknown as { referrer_ambassador_id: string | null })
+    .referrer_ambassador_id;
+  if (refAmbId) {
+    const dup = await db.from("referral_fees").select("id").eq("case_id", case_id).maybeSingle();
+    if (!dup.data) {
+      const fs = await db
+        .from("fee_settings")
+        .select("rate_buy,rate_work,tk_share")
+        .lte("effective_from", new Date().toISOString().slice(0, 10))
+        .order("effective_from", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const amb = await db.from("ambassadors").select("id,tk_id").eq("id", refAmbId).maybeSingle();
+      if (fs.data && amb.data) {
+        const fee = computeReferralFee({
+          buyTotal: buy_total,
+          workTotal: work_total,
+          rateBuy: Number(fs.data.rate_buy),
+          rateWork: Number(fs.data.rate_work),
+          tkShare: Number(fs.data.tk_share),
+          ambassadorId: amb.data.id,
+          ambassadorTkId: amb.data.tk_id ?? null,
+        });
+        const fins = await db.from("referral_fees").insert({
+          case_id,
+          ambassador_id: amb.data.id,
+          tk_id: amb.data.tk_id ?? null,
+          fee_buy: fee.fee_buy,
+          fee_work: fee.fee_work,
+          fee_total: fee.fee_total,
+          pay_to: fee.pay_to,
+          pay_to_id: fee.pay_to_id,
+          tk_portion: fee.tk_portion,
+          ambassador_portion: fee.ambassador_portion,
+          accrued_at: new Date().toISOString(),
+        });
+        if (!fins.error) referral_fee_total = fee.fee_total;
+      }
+    }
+  }
+
   // クローズ
   const cl = await db
     .from("cases")
@@ -106,5 +150,5 @@ export async function POST(req: Request) {
     .eq("id", case_id);
   if (cl.error) return fail(cl.error.message, 500);
 
-  return ok({ buy_total, work_total, net_amount, cash_settled, daicho_count });
+  return ok({ buy_total, work_total, net_amount, cash_settled, daicho_count, referral_fee_total });
 }

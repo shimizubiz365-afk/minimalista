@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/liffClient";
 
@@ -26,6 +26,14 @@ export default function NewCasePage() {
     source: "phone",
   });
   const [err, setErr] = useState<string>();
+  const [ambassadors, setAmbassadors] = useState<{ id: string; name: string }[]>([]);
+  const [ambId, setAmbId] = useState("");
+
+  useEffect(() => {
+    apiFetch<{ id: string; name: string }[]>("/api/ambassadors").then(
+      (r) => r.ok && setAmbassadors(r.data ?? [])
+    );
+  }, []);
 
   async function search() {
     if (!phone.trim()) return;
@@ -45,6 +53,7 @@ export default function NewCasePage() {
       area: form.area,
       desired_items: form.desired_items,
       source: form.source,
+      referrer_ambassador_id: form.source === "referral" ? ambId || null : null,
     };
     const r = await apiFetch<{ id: string }>("/api/cases", {
       method: "POST",
@@ -137,6 +146,20 @@ export default function NewCasePage() {
         <option value="email">メール</option>
         <option value="referral">紹介</option>
       </select>
+      {form.source === "referral" && (
+        <select
+          className="border p-2 w-full"
+          value={ambId}
+          onChange={(e) => setAmbId(e.target.value)}
+        >
+          <option value="">紹介アンバサダーを選択</option>
+          {ambassadors.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+        </select>
+      )}
       {err && <p className="text-red-600">{err}</p>}
       <button onClick={submit} className="bg-black text-white w-full py-3 rounded">
         登録して案件を開く
