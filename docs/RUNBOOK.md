@@ -96,9 +96,26 @@ from kobutsu_daicho order by transaction_date desc;
 - **法定保管期間＝最終記載日から3年**。データを消さない運用（論理削除も避ける）。
 - 1万円未満免除・例外品目の判定は実装していない＝**全件記録**（安全側）。
 
-## 7. テスト一覧（現状21件）
+## 6c. Phase 3（在庫・販売・粗利）
+
+### マイグレーション
+- `supabase/migrations/0004_phase3_schema.sql` を適用（products / product_source_items / sales + 2 enum）。
+
+### E2E（実機）
+1. まとめ買いした案件の詳細→「この案件を商品化する」。
+2. 商品化画面で **仕入プール／割当済／残** を見ながら：
+   - 1明細を選んで複数商品を作る（バラ売り）
+   - 複数明細を選んで1商品を作る（ロット）
+3. 在庫一覧（/products）→ 商品 → 販売登録（売値・販路・売却日）→ **粗利 = 売値 − 原価** が出る。
+4. 売却済の商品に再度販売 → ブロック（409）。
+
+### 注意
+- 仕入原価は**手動入力**（自動按分なし）。原価合計が仕入を超えると残がマイナス表示（警告のみ・ブロックしない）。
+- 粗利は販売時点の原価でスナップショット。
+
+## 7. テスト一覧（現状26件）
 - `lib/settlement.test.ts` — 古物台帳の組み立て（2件）
-- `lib/money.test.ts` — netAmount を含む（11件）
+- `lib/money.test.ts` — netAmount / grossProfit / sumCosts を含む（16件）
 - `lib/money.test.ts` — 金額の決定論集計（8件）
 - `lib/liffAuth.test.ts` — IDトークン検証＋staff突合（3件）
 - `lib/api.test.ts` — APIレスポンスヘルパ（2件）

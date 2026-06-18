@@ -7,6 +7,9 @@ export default function Home() {
       <Link href="/cases" className="block rounded bg-black text-white text-center py-3">
         案件一覧へ
       </Link>
+      <Link href="/products" className="block rounded bg-gray-200 text-center py-3">
+        在庫一覧へ
+      </Link>
     </main>
   );
 }

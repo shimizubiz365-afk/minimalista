@@ -13,3 +13,11 @@ export function formatYen(n: number): string {
 export function netAmount(buyTotal: number, workTotal: number): number {
   return buyTotal - workTotal;
 }
+
+export function grossProfit(salePrice: number, cost: number): number {
+  return salePrice - cost;
+}
+
+export function sumCosts(products: { cost: number }[]): number {
+  return products.reduce((acc, p) => acc + p.cost, 0);
+}

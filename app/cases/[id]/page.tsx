@@ -162,6 +162,13 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
         </button>
       </section>
 
+      <section>
+        <h2 className="font-bold">在庫化</h2>
+        <Link href={`/cases/${id}/products`} className="text-blue-600">
+          この案件を商品化する
+        </Link>
+      </section>
+
       <section className="border-t pt-3">
         <h2 className="font-bold">精算</h2>
         {d.case.status === "closed" ? (
