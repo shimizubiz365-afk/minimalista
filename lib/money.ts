@@ -9,3 +9,7 @@ export function sumWorkFees(items: { work_fee: number }[]): number {
 export function formatYen(n: number): string {
   return "¥" + n.toLocaleString("ja-JP");
 }
+
+export function netAmount(buyTotal: number, workTotal: number): number {
+  return buyTotal - workTotal;
+}

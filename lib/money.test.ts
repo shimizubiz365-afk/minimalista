@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sumAmounts, sumWorkFees, formatYen } from "@/lib/money";
+import { sumAmounts, sumWorkFees, formatYen, netAmount } from "@/lib/money";
 
 describe("sumAmounts", () => {
   it("空配列は0", () => expect(sumAmounts([])).toBe(0));
@@ -19,4 +19,10 @@ describe("sumWorkFees", () => {
 describe("formatYen", () => {
   it("3桁区切り+円", () => expect(formatYen(1234567)).toBe("¥1,234,567"));
   it("0", () => expect(formatYen(0)).toBe("¥0"));
+});
+
+describe("netAmount", () => {
+  it("買取超過は正", () => expect(netAmount(10000, 3000)).toBe(7000));
+  it("受領超過は負", () => expect(netAmount(2000, 5000)).toBe(-3000));
+  it("同額は0", () => expect(netAmount(4000, 4000)).toBe(0));
 });

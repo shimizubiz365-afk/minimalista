@@ -5,7 +5,14 @@ import { apiFetch } from "@/lib/liffClient";
 import { formatYen } from "@/lib/money";
 
 type Detail = {
-  case: { id: string; status: string; visit_at: string | null; area: string | null; memo: string | null };
+  case: {
+    id: string;
+    status: string;
+    visit_at: string | null;
+    area: string | null;
+    memo: string | null;
+    verification_method: string | null;
+  };
   customer: { name: string; customer_no: string; phone: string | null; address: string | null };
   purchase_items: { id: string; name: string; amount: number }[];
   collection_items: { id: string; item_name: string; work_fee: number }[];
@@ -17,6 +24,7 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
   const [d, setD] = useState<Detail>();
   const [msg, setMsg] = useState<string>();
   const [pdfUrl, setPdfUrl] = useState<string>();
+  const [cash, setCash] = useState("");
 
   async function load() {
     const r = await apiFetch<Detail>(`/api/cases/${id}`);
@@ -45,6 +53,22 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
     if (r.ok) {
       setPdfUrl(r.data!.signed_url);
       setMsg(undefined);
+    } else setMsg(r.error);
+  }
+  async function settle() {
+    const n = parseInt(cash, 10);
+    if (isNaN(n)) {
+      setMsg("受領/支払現金を入力してください");
+      return;
+    }
+    setMsg("精算確定中...");
+    const r = await apiFetch<{ daicho_count: number }>("/api/settlements", {
+      method: "POST",
+      body: JSON.stringify({ case_id: id, cash_settled: n }),
+    });
+    if (r.ok) {
+      setMsg(`精算確定（台帳${r.data!.daicho_count}件生成）`);
+      load();
     } else setMsg(r.error);
   }
   if (!d) return <main className="p-4">{msg ?? "読み込み中..."}</main>;
@@ -80,6 +104,17 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
           ))}
         </select>
       </div>
+
+      <section>
+        <h2 className="font-bold">本人確認</h2>
+        {d.case.verification_method ? (
+          <p className="text-sm text-green-700">確認済み（{d.case.verification_method}）</p>
+        ) : (
+          <Link href={`/cases/${id}/verify`} className="text-blue-600">
+            本人確認を実施
+          </Link>
+        )}
+      </section>
 
       <section>
         <div className="flex justify-between">
@@ -125,6 +160,31 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
         >
           領収書PDF発行
         </button>
+      </section>
+
+      <section className="border-t pt-3">
+        <h2 className="font-bold">精算</h2>
+        {d.case.status === "closed" ? (
+          <p className="text-sm text-green-700">精算確定済み（クローズ）</p>
+        ) : (
+          <>
+            <label className="text-sm">受領/支払 現金（円）</label>
+            <input
+              className="border p-2 w-full"
+              type="number"
+              inputMode="numeric"
+              value={cash}
+              onChange={(e) => setCash(e.target.value)}
+              placeholder={`差引: ${formatYen(buyTotal - workTotal)}`}
+            />
+            <button
+              onClick={settle}
+              className="mt-2 bg-red-700 text-white w-full py-2 rounded"
+            >
+              精算を確定する（台帳生成・クローズ）
+            </button>
+          </>
+        )}
       </section>
 
       {msg && <p className="text-red-600">{msg}</p>}

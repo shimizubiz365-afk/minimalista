@@ -75,7 +75,30 @@ npm run build    # 本番ビルド
 ```
 ※ LIFF は LINE アプリ内 or LIFF ブラウザでないとログインが完結しない。ローカルの素のブラウザでは認証部分は通らない。
 
-## 7. テスト一覧（現状16件）
+## 6b. Phase 2（本人確認・古物台帳・精算）
+
+### マイグレーション
+- `supabase/migrations/0003_phase2_schema.sql` を適用（customers/cases 列追加 + settlements + kobutsu_daicho）。
+
+### E2E（実機）
+1. 買取明細のある案件で「本人確認を実施」→ 身分証撮影＋確認方法＋職業＋生年を保存。
+2. 本人確認せず「精算を確定」→ **ブロックされる**こと（「本人確認が未完了です」）。
+3. 本人確認後に「精算を確定」（受領/支払現金を入力）→ settlements 作成・kobutsu_daicho が買取件数分生成・案件が closed。
+4. 顧客名を後から変更しても、台帳（kobutsu_daicho）の customer_name は**変わらない**（取引時点スナップショット）。
+5. 回収のみの案件は本人確認なしで精算でき、台帳は0件。
+
+### 古物台帳の確認・運用
+```sql
+select transaction_date, item_description, item_characteristics, quantity, price,
+       customer_name, customer_address, customer_occupation, customer_age, verification_method
+from kobutsu_daicho order by transaction_date desc;
+```
+- **法定保管期間＝最終記載日から3年**。データを消さない運用（論理削除も避ける）。
+- 1万円未満免除・例外品目の判定は実装していない＝**全件記録**（安全側）。
+
+## 7. テスト一覧（現状21件）
+- `lib/settlement.test.ts` — 古物台帳の組み立て（2件）
+- `lib/money.test.ts` — netAmount を含む（11件）
 - `lib/money.test.ts` — 金額の決定論集計（8件）
 - `lib/liffAuth.test.ts` — IDトークン検証＋staff突合（3件）
 - `lib/api.test.ts` — APIレスポンスヘルパ（2件）
