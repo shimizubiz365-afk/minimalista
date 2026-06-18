@@ -4,7 +4,7 @@
 **日付**: 2026-06-18
 **対象**: 単一テナント（自社専用）出張買取の業務管理ツール
 **配信形態**: LINE内 LIFFアプリ（リッチメニューから起動）
-**スコープ**: Phase 1 — 中核ループのみ（予約登録 → 案件一覧 → 案件詳細 → 買取入力 → 買取伝票PDF発行 → 表示・保存）
+**スコープ**: Phase 1 — 中核ループ（予約登録 → 案件一覧 → 案件詳細 → 買取入力／回収入力 → 買取伝票・領収書PDF発行 → 表示・保存）
 
 > 本設計書はマスター仕様 v0.2（全6フェーズ）のうち **Phase 1 のみ** を対象とする。Phase 2-6（回収・台帳・精算・在庫・販売・紹介フィー・ダッシュボード・帳簿エクスポート）は完成形ロードマップとして別途扱い、Phase 1 を E2E で通してから各フェーズを個別にブレスト→設計→実装する。
 
@@ -13,24 +13,29 @@
 ## 1. ゴールと受け入れ基準
 
 ### 1.1 Phase 1 のゴール
-出張買取の中核業務フローを LINE 内で1本通す：
+出張買取の中核業務フローを LINE 内で1本通す。1回の訪問（case）で **買取（うちが客に払う）** と **回収（客がうちに作業費を払う）** が両方起こりうる：
 
 ```
-予約登録 → 案件一覧 → 案件詳細 → 買取入力（写真付き）→ 買取伝票PDF発行 → 画面表示・保存
+予約登録 → 案件一覧 → 案件詳細 → 買取入力／回収入力（写真付き）→ 買取伝票・領収書PDF発行 → 画面表示・保存
 ```
+
+- **買取伝票（purchase_slip）**: 買取明細を一覧し、うちが客に支払う額を記す控え
+- **領収書（receipt）**: 回収の作業費として客から受領した額の受領証
 
 ### 1.2 受け入れ基準（E2E）
 LINEアプリ実機で、スタッフがログインして以下を完遂できること：
 1. 電話で受けた依頼を **予約登録**（既存顧客は名寄せ候補から選択、新規は作成）
 2. **案件一覧** で予約案件を確認
 3. **案件詳細** を開き、ステータスを進められる（reserved→visiting→visited）
-4. **買取入力** で複数の買取明細を金額・写真付きで登録
-5. **買取伝票PDF** を発行し、画面に日本語が正しく表示される PDF が出る
+4. **買取入力** で複数の買取明細を金額・写真付きで登録／**回収入力** で回収品目と作業費を登録
+5. **買取伝票PDF** と **領収書PDF** を発行し、画面に日本語が正しく表示される PDF が出る
 6. 発行された PDF が Supabase Storage に保存され、`documents` に記録される
 
 ### 1.3 非ゴール（Phase 1で作らない）
-- 回収・古物台帳・精算・在庫・販売・紹介フィー・ダッシュボード（Phase 2以降）
+- 精算（買取と回収のネット計算 = settlements）・古物台帳・在庫・販売・紹介フィー・ダッシュボード（Phase 2以降）
 - 顧客への実送信（LINE/メール）— `documents.sent_*` は箱だけ用意し未実装
+
+> 注: 回収（collection_items）と領収書（receipt）は当初マスター仕様では Phase 2 だったが、買取と同じ訪問で発生し PDF 機構を共有するため Phase 1 に前倒し。ただし買取と回収を相殺する**精算（settlements）は Phase 2 のまま**。
 - 帳簿エクスポート
 - RLS（単一テナント内部ツールのため当面サーバー側でゲート。SaaS化時の既知移行ポイント）
 
@@ -75,20 +80,24 @@ app/
     cases/new/page.tsx     # 02 予約登録
     cases/[id]/page.tsx    # 03 案件詳細
     cases/[id]/purchase/page.tsx  # 04 買取入力
+    cases/[id]/collection/page.tsx # 04b 回収入力
   api/
     auth/verify/route.ts   # IDトークン検証+staff突合
     customers/search/route.ts     # 電話名寄せ候補
     cases/route.ts                # 一覧/作成
     cases/[id]/route.ts           # 詳細/ステータス更新
     purchase-items/route.ts       # 買取明細 作成
+    collection-items/route.ts     # 回収明細 作成
     media/route.ts                # 画像アップロード
     documents/purchase-slip/route.ts  # 買取伝票PDF発行
+    documents/receipt/route.ts        # 領収書PDF発行
 lib/
   supabaseAdmin.ts         # service role クライアント（サーバー専用）
   liffAuth.ts              # IDトークン検証 + staff突合
   company.ts               # 会社情報（屋号/古物商許可番号/住所/TEL）定数
   money.ts                 # 金額の決定論ロジック（集計）
   pdf/purchaseSlip.tsx     # 買取伝票テンプレート（react-pdf）
+  pdf/receipt.tsx          # 領収書テンプレート（react-pdf）
 ```
 
 ---
@@ -102,7 +111,7 @@ lead_source : phone | line | email | referral
 media_kind  : purchase | collection | id_doc
 doc_type    : purchase_slip | receipt
 ```
-Phase 1 で実際に使う遷移は `reserved → visiting → visited → closed`（＋`cancelled`）。`pending_pickup` は定義のみ。`media_kind` は `purchase` を主に使用。`doc_type` は `purchase_slip` のみ。
+Phase 1 で実際に使う遷移は `reserved → visiting → visited → closed`（＋`cancelled`）。`pending_pickup` は定義のみ。`media_kind` は `purchase` / `collection` を使用（`id_doc` はPhase 2）。`doc_type` は `purchase_slip` / `receipt` の両方を使用。
 
 ### 3.2 テーブル
 
@@ -167,14 +176,24 @@ Phase 1 で実際に使う遷移は `reserved → visiting → visited → close
 | created_by | uuid FK→staff | 買取入力者（成績の基点） |
 | created_at | timestamptz default now() | |
 
+**collection_items（回収明細）**
+| 列 | 型 | 備考 |
+|---|---|---|
+| id | uuid PK | |
+| case_id | uuid FK→cases NOT NULL | |
+| item_name | text NOT NULL | 回収品目 |
+| work_fee | integer NOT NULL | 作業費（円・客から受領） |
+| created_by | uuid FK→staff | 入力者 |
+| created_at | timestamptz default now() | |
+
 **media（写真）**
 | 列 | 型 | 備考 |
 |---|---|---|
 | id | uuid PK | |
 | case_id | uuid FK→cases NOT NULL | |
-| kind | media_kind NOT NULL | Phase 1は主に `purchase` |
+| kind | media_kind NOT NULL | Phase 1は `purchase` / `collection` |
 | purchase_item_id | uuid FK→purchase_items nullable | |
-| collection_item_id | uuid nullable | Phase 1未使用 |
+| collection_item_id | uuid FK→collection_items nullable | 回収品の写真 |
 | storage_path | text NOT NULL | Supabase Storage パス |
 | created_at | timestamptz default now() | |
 
@@ -183,7 +202,7 @@ Phase 1 で実際に使う遷移は `reserved → visiting → visited → close
 |---|---|---|
 | id | uuid PK | |
 | case_id | uuid FK→cases NOT NULL | |
-| type | doc_type NOT NULL | Phase 1は `purchase_slip` |
+| type | doc_type NOT NULL | Phase 1は `purchase_slip` / `receipt` |
 | storage_path | text NOT NULL | |
 | issued_at | timestamptz default now() | |
 | sent_at | timestamptz nullable | Phase 1未使用 |
@@ -207,19 +226,23 @@ Postgres シーケンス `customer_no_seq` ＋ BEFORE INSERT トリガで `'C-' 
 | 起動 | ログイン | `/` | LIFF初期化→ログイン→staff突合。未登録は連絡案内 | — |
 | 01 | 案件一覧 | `/cases` | status別タブ、新規予約ボタン | 読 |
 | 02 | 予約登録 | `/cases/new` | 電話入力→既存候補警告→選択or新規、訪問日時/エリア/希望品目/source | customers(新規時) + cases |
-| 03 | 案件詳細 | `/cases/[id]` | 顧客情報・架電ログ・買取明細・ステータス変更・伝票発行 | call_logs / cases.status |
+| 03 | 案件詳細 | `/cases/[id]` | 顧客情報・架電ログ・買取明細・回収明細・ステータス変更・伝票/領収書発行 | call_logs / cases.status |
 | 04 | 買取入力 | `/cases/[id]/purchase` | 明細を複数追加（品名/ブランド/型番/状態/金額）、各明細に写真添付 | purchase_items + media |
-| 05 | 伝票発行 | 案件詳細内アクション | 「買取伝票PDF発行」→生成→画面にPDF表示 | documents |
+| 04b | 回収入力 | `/cases/[id]/collection` | 回収品目＋作業費を複数追加、写真添付 | collection_items + media |
+| 05 | 買取伝票発行 | 案件詳細内アクション | 「買取伝票PDF発行」→生成→画面にPDF表示 | documents (purchase_slip) |
+| 05b | 領収書発行 | 案件詳細内アクション | 「領収書PDF発行」→生成→画面にPDF表示 | documents (receipt) |
 
 ### 4.1 名寄せフロー（予約登録）
 電話番号入力 → `GET /api/customers/search?phone=` で同一/類似phoneの既存顧客を返す → 候補があれば「既存顧客が見つかりました」と警告表示し選択可能 → 選択しなければ新規 customer 作成。phone は重複許容（家族別案件を想定）。
 
-### 4.2 伝票発行フロー
-1. クライアント「発行」→ `POST /api/documents/purchase-slip { case_id }`
-2. API: staff検証 → 当該 case の purchase_items を取得 → `lib/money.ts` で合計を決定論的に集計
-3. `lib/pdf/purchaseSlip.tsx`（react-pdf）で PDF 生成（会社情報 + 顧客 + 明細 + 合計 + 取引日 + 担当者）
+### 4.2 伝票発行フロー（買取伝票・領収書 共通の機構）
+1. クライアント「発行」→ `POST /api/documents/purchase-slip { case_id }` または `POST /api/documents/receipt { case_id }`
+2. API: staff検証 → 当該 case の明細を取得（買取伝票=purchase_items / 領収書=collection_items）→ `lib/money.ts` で合計を決定論的に集計
+3. react-pdf で PDF 生成
+   - `lib/pdf/purchaseSlip.tsx`: 会社情報 + 顧客 + 買取明細 + 買取合計 + 取引日 + 担当者
+   - `lib/pdf/receipt.tsx`: 会社情報 + 顧客（宛名）+ 回収品目 + 作業費合計（受領額）+ 但し書き（回収作業費として）+ 受領日 + 担当者
 4. Storage `documents` バケットへ保存
-5. `documents` 行 insert（type=`purchase_slip`, storage_path）
+5. `documents` 行 insert（type=`purchase_slip` または `receipt`, storage_path）
 6. 署名URLを返却 → クライアントで PDF 表示
 
 ### 4.3 画像アップロード
@@ -236,14 +259,15 @@ Postgres シーケンス `customer_no_seq` ＋ BEFORE INSERT トリガで `'C-' 
 
 ## 5. 金額の扱い（決定論）
 - 金額はすべて `integer`（円・最小単位）。浮動小数を使わない。
-- 買取合計 = `sum(purchase_items.amount)` を `lib/money.ts` の純関数で算出。AIを介在させない。
+- 買取合計 = `sum(purchase_items.amount)`、回収作業費合計（受領額） = `sum(collection_items.work_fee)`。いずれも `lib/money.ts` の純関数で算出。AIを介在させない。
+- 買取と回収の相殺（ネット精算）は Phase 1 では行わない（Phase 2 の settlements）。Phase 1 の各PDFはそれぞれの合計を独立に表示する。
 - 税の扱いは Phase 1 では対象外（後フェーズ）。
 
 ---
 
 ## 6. テスト方針
-1. **決定論ロジック（最優先）**: `lib/money.ts` の合計算出 → ユニットテスト（空・1件・複数・大きい額）。
-2. **PDF生成**: 日本語フォント埋め込みの検証を最初に単体で潰す（「日本語が出るPDFを1枚生成」を最初のタスクにする）。買取伝票テンプレートの項目が揃うことをテスト。
+1. **決定論ロジック（最優先）**: `lib/money.ts` の買取合計・回収作業費合計算出 → ユニットテスト（空・1件・複数・大きい額）。
+2. **PDF生成**: 日本語フォント埋め込みの検証を最初に単体で潰す（「日本語が出るPDFを1枚生成」を最初のタスクにする）。買取伝票・領収書の両テンプレートの項目が揃うことをテスト。
 3. **API routes**: staff検証（正常/未登録/無効）、明細集計、ステータス更新の境界。
 4. **手動E2E**: LINE実機で §1.2 の6ステップを通すのが受け入れ基準。
 
@@ -260,11 +284,11 @@ Postgres シーケンス `customer_no_seq` ＋ BEFORE INSERT トリガで `'C-' 
 
 ## 8. ビルド順（Phase 1 内）
 1. 足場: Next.js + Supabase client(server) + LIFF初期化 + Storageバケット作成
-2. DBマイグレーション（enum + 7テーブル + 採番トリガ）
+2. DBマイグレーション（enum + 8テーブル[staff/customers/cases/call_logs/purchase_items/collection_items/media/documents] + 採番トリガ）
 3. 認証: IDトークン検証 + staff突合（`lib/liffAuth.ts`）
 4. PDF日本語フォント単体検証（最大の罠を先に潰す）
 5. 予約登録 + 名寄せ（02）→ 案件一覧（01）
 6. 案件詳細（03）+ ステータス更新
-7. 買取入力（04）+ 画像アップロード
-8. 買取伝票PDF発行（05）
+7. 買取入力（04）+ 回収入力（04b）+ 画像アップロード
+8. 買取伝票PDF発行（05）+ 領収書PDF発行（05b）
 9. 手動E2E（実機）
