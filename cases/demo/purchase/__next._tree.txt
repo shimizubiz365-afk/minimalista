@@ -1,0 +1,2 @@
+:HL["/minimalista/_next/static/chunks/0t7rf-evw06ck.css","style"]
+0:{"tree":{"name":"","param":null,"prefetchHints":16,"slots":{"children":{"name":"cases","param":null,"prefetchHints":0,"slots":{"children":{"name":"id","param":{"type":"d","key":"demo","siblings":null},"prefetchHints":0,"slots":{"children":{"name":"purchase","param":null,"prefetchHints":0,"slots":{"children":{"name":"__PAGE__","param":null,"prefetchHints":0,"slots":null}}}}}}}}},"staleTime":300,"buildId":"De92QHuSyzCplglhag2rv"}
