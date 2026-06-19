@@ -2,6 +2,7 @@
 import { useEffect, useState, use } from "react";
 import { apiFetch } from "@/lib/liffClient";
 import { formatYen, grossProfit } from "@/lib/money";
+import { label, PRODUCT_STATUS_LABELS, CHANNEL_LABELS } from "@/lib/labels";
 
 type Detail = {
   product: { id: string; name: string; cost: number; status: string; condition: string | null };
@@ -55,13 +56,14 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
     <main className="p-4 space-y-4">
       <h1 className="text-lg font-bold">{d.product.name}</h1>
       <p className="text-sm">
-        原価 {formatYen(d.product.cost)}・状態 {d.product.status}
+        原価 {formatYen(d.product.cost)}・状態 {label(PRODUCT_STATUS_LABELS, d.product.status)}
       </p>
 
       {d.sale ? (
         <div className="bg-green-50 rounded p-3 text-sm">
           売却済：売値 {formatYen(d.sale.sale_price)}／粗利{" "}
-          <b>{formatYen(d.sale.gross_profit)}</b>（{d.sale.channel}・{d.sale.sold_at}）
+          <b>{formatYen(d.sale.gross_profit)}</b>（{label(CHANNEL_LABELS, d.sale.channel)}・
+          {d.sale.sold_at}）
         </div>
       ) : (
         <section className="space-y-2">
@@ -82,7 +84,7 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
           >
             {CHANNELS.map((c) => (
               <option key={c} value={c}>
-                {c}
+                {label(CHANNEL_LABELS, c)}
               </option>
             ))}
           </select>

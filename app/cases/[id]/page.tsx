@@ -3,6 +3,7 @@ import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { apiFetch } from "@/lib/liffClient";
 import { formatYen } from "@/lib/money";
+import { label, CASE_STATUS_LABELS } from "@/lib/labels";
 
 type Detail = {
   case: {
@@ -99,7 +100,7 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
         >
           {STATUSES.map((st) => (
             <option key={st} value={st}>
-              {st}
+              {label(CASE_STATUS_LABELS, st)}
             </option>
           ))}
         </select>

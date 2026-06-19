@@ -2,6 +2,7 @@
 import { useEffect, useState, use } from "react";
 import { apiFetch } from "@/lib/liffClient";
 import { formatYen, sumAmounts, sumCosts } from "@/lib/money";
+import { label, PRODUCT_STATUS_LABELS } from "@/lib/labels";
 
 type PItem = { id: string; name: string; amount: number };
 type Detail = { purchase_items: PItem[] };
@@ -105,7 +106,7 @@ export default function ProductizePage({ params }: { params: Promise<{ id: strin
         {products.map((p) => (
           <div key={p.id} className="flex justify-between py-1 border-b">
             <span>
-              {p.name}（{p.status}）
+              {p.name}（{label(PRODUCT_STATUS_LABELS, p.status)}）
             </span>
             <span>原価 {formatYen(p.cost)}</span>
           </div>
