@@ -1,7 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Search, ArrowRight } from "lucide-react";
 import { apiFetch } from "@/lib/liffClient";
+import { AppHeader } from "@/components/app-header";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Field, inputClass } from "@/components/ui/field";
+import { cn } from "@/lib/cn";
 
 type Cust = {
   id: string;
@@ -64,106 +70,136 @@ export default function NewCasePage() {
   }
 
   return (
-    <main className="p-4 space-y-3">
-      <h1 className="text-lg font-bold">予約登録</h1>
-      <label className="block text-sm">
-        電話番号
-        <div className="flex gap-2">
-          <input
-            className="border p-2 flex-1"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            onBlur={search}
-          />
-          <button onClick={search} className="bg-gray-200 px-3 rounded">
-            検索
-          </button>
-        </div>
-      </label>
-      {candidates.length > 0 && (
-        <div className="border rounded p-2 bg-yellow-50 text-sm">
-          <p className="font-medium">同じ電話番号の既存顧客（選ぶと紐付け）</p>
-          {candidates.map((c) => (
+    <main>
+      <AppHeader title="予約登録" backHref="/cases" />
+      <section className="px-5 pt-6 space-y-4">
+        <Field label="電話番号">
+          <div className="flex gap-2">
+            <input
+              className={cn(inputClass, "flex-1")}
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              onBlur={search}
+            />
             <button
-              key={c.id}
-              onClick={() => pick(c)}
-              className={`block w-full text-left py-1 ${existingId === c.id ? "font-bold" : ""}`}
+              onClick={search}
+              className="h-12 px-4 rounded-md border border-border bg-surface text-fg flex items-center gap-1 active:bg-border/40"
             >
-              {c.customer_no} {c.name}（{c.address ?? "住所未登録"}）
+              <Search className="w-4 h-4" /> 検索
             </button>
-          ))}
-          <button onClick={() => setExistingId(undefined)} className="text-blue-600 mt-1">
-            新規として登録する
-          </button>
-        </div>
-      )}
-      <input
-        className="border p-2 w-full"
-        placeholder="氏名"
-        value={form.name}
-        onChange={(e) => setForm({ ...form, name: e.target.value })}
-        disabled={!!existingId}
-      />
-      <input
-        className="border p-2 w-full"
-        placeholder="フリガナ"
-        value={form.name_kana}
-        onChange={(e) => setForm({ ...form, name_kana: e.target.value })}
-        disabled={!!existingId}
-      />
-      <input
-        className="border p-2 w-full"
-        placeholder="住所"
-        value={form.address}
-        onChange={(e) => setForm({ ...form, address: e.target.value })}
-        disabled={!!existingId}
-      />
-      <input
-        className="border p-2 w-full"
-        type="datetime-local"
-        value={form.visit_at}
-        onChange={(e) => setForm({ ...form, visit_at: e.target.value })}
-      />
-      <input
-        className="border p-2 w-full"
-        placeholder="エリア"
-        value={form.area}
-        onChange={(e) => setForm({ ...form, area: e.target.value })}
-      />
-      <input
-        className="border p-2 w-full"
-        placeholder="希望品目"
-        value={form.desired_items}
-        onChange={(e) => setForm({ ...form, desired_items: e.target.value })}
-      />
-      <select
-        className="border p-2 w-full"
-        value={form.source}
-        onChange={(e) => setForm({ ...form, source: e.target.value })}
-      >
-        <option value="phone">電話</option>
-        <option value="line">LINE</option>
-        <option value="email">メール</option>
-        <option value="referral">紹介</option>
-      </select>
-      {form.source === "referral" && (
-        <select
-          className="border p-2 w-full"
-          value={ambId}
-          onChange={(e) => setAmbId(e.target.value)}
-        >
-          <option value="">紹介アンバサダーを選択</option>
-          {ambassadors.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name}
-            </option>
-          ))}
-        </select>
-      )}
-      {err && <p className="text-red-600">{err}</p>}
-      <button onClick={submit} className="bg-black text-white w-full py-3 rounded">
-        登録して案件を開く
-      </button>
+          </div>
+        </Field>
+
+        {candidates.length > 0 && (
+          <Card className="bg-accent/10 border-accent/30">
+            <p className="text-sm font-medium mb-2">
+              同じ電話番号の既存顧客（選ぶと紐付け）
+            </p>
+            {candidates.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => pick(c)}
+                className={cn(
+                  "block w-full text-left py-1.5 text-sm",
+                  existingId === c.id && "font-bold text-primary"
+                )}
+              >
+                {c.customer_no} {c.name}（{c.address ?? "住所未登録"}）
+              </button>
+            ))}
+            <button
+              onClick={() => setExistingId(undefined)}
+              className="text-info text-sm mt-1"
+            >
+              新規として登録する
+            </button>
+          </Card>
+        )}
+
+        <Field label="氏名">
+          <input
+            className={inputClass}
+            placeholder="氏名"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            disabled={!!existingId}
+          />
+        </Field>
+        <Field label="フリガナ">
+          <input
+            className={inputClass}
+            placeholder="フリガナ"
+            value={form.name_kana}
+            onChange={(e) => setForm({ ...form, name_kana: e.target.value })}
+            disabled={!!existingId}
+          />
+        </Field>
+        <Field label="住所">
+          <input
+            className={inputClass}
+            placeholder="住所"
+            value={form.address}
+            onChange={(e) => setForm({ ...form, address: e.target.value })}
+            disabled={!!existingId}
+          />
+        </Field>
+        <Field label="訪問日時">
+          <input
+            className={inputClass}
+            type="datetime-local"
+            value={form.visit_at}
+            onChange={(e) => setForm({ ...form, visit_at: e.target.value })}
+          />
+        </Field>
+        <Field label="エリア">
+          <input
+            className={inputClass}
+            placeholder="エリア"
+            value={form.area}
+            onChange={(e) => setForm({ ...form, area: e.target.value })}
+          />
+        </Field>
+        <Field label="希望品目">
+          <input
+            className={inputClass}
+            placeholder="希望品目"
+            value={form.desired_items}
+            onChange={(e) => setForm({ ...form, desired_items: e.target.value })}
+          />
+        </Field>
+        <Field label="流入経路">
+          <select
+            className={inputClass}
+            value={form.source}
+            onChange={(e) => setForm({ ...form, source: e.target.value })}
+          >
+            <option value="phone">電話</option>
+            <option value="line">LINE</option>
+            <option value="email">メール</option>
+            <option value="referral">紹介</option>
+          </select>
+        </Field>
+        {form.source === "referral" && (
+          <Field label="紹介アンバサダー">
+            <select
+              className={inputClass}
+              value={ambId}
+              onChange={(e) => setAmbId(e.target.value)}
+            >
+              <option value="">紹介アンバサダーを選択</option>
+              {ambassadors.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
+        {err && <p className="text-danger text-sm">{err}</p>}
+        <Button onClick={submit} size="lg">
+          登録して案件を開く <ArrowRight className="w-4 h-4" />
+        </Button>
+      </section>
     </main>
   );
 }

@@ -1,6 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
+import { Plus } from "lucide-react";
 import { apiFetch } from "@/lib/liffClient";
+import { AppHeader } from "@/components/app-header";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Field, inputClass } from "@/components/ui/field";
 
 type Tk = { id: string; name: string; contact: string | null };
 
@@ -27,37 +32,51 @@ export default function TkPage() {
     } else setMsg(r.error);
   }
   return (
-    <main className="p-4 space-y-3">
-      <h1 className="text-lg font-bold">TK（統括）</h1>
-      <input
-        className="border p-2 w-full"
-        placeholder="名前"
-        value={form.name}
-        onChange={(e) => setForm({ ...form, name: e.target.value })}
-      />
-      <input
-        className="border p-2 w-full"
-        placeholder="連絡先"
-        value={form.contact}
-        onChange={(e) => setForm({ ...form, contact: e.target.value })}
-      />
-      <input
-        className="border p-2 w-full"
-        placeholder="振込先など"
-        value={form.payment_info}
-        onChange={(e) => setForm({ ...form, payment_info: e.target.value })}
-      />
-      {msg && <p className="text-red-600">{msg}</p>}
-      <button onClick={add} className="bg-black text-white w-full py-2 rounded">
-        TKを追加
-      </button>
-      <ul className="divide-y">
-        {rows.map((t) => (
-          <li key={t.id} className="py-2">
-            {t.name}（{t.contact ?? "-"}）
-          </li>
-        ))}
-      </ul>
+    <main>
+      <AppHeader title="TK（総代理店）" backHref="/settings" />
+      <section className="px-5 pt-6 space-y-4">
+        <Card>
+          <div className="space-y-3">
+            <Field label="名前" required>
+              <input
+                className={inputClass}
+                placeholder="名前"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+              />
+            </Field>
+            <Field label="連絡先">
+              <input
+                className={inputClass}
+                placeholder="連絡先"
+                value={form.contact}
+                onChange={(e) => setForm({ ...form, contact: e.target.value })}
+              />
+            </Field>
+            <Field label="振込先など">
+              <input
+                className={inputClass}
+                placeholder="振込先など"
+                value={form.payment_info}
+                onChange={(e) => setForm({ ...form, payment_info: e.target.value })}
+              />
+            </Field>
+            {msg && <p className="text-danger text-sm">{msg}</p>}
+            <Button onClick={add}>
+              <Plus className="w-4 h-4" /> TKを追加
+            </Button>
+          </div>
+        </Card>
+
+        <div className="space-y-3">
+          {rows.map((t) => (
+            <Card key={t.id}>
+              <span className="text-sm font-medium">{t.name}</span>
+              <span className="text-sm text-muted">（{t.contact ?? "-"}）</span>
+            </Card>
+          ))}
+        </div>
+      </section>
     </main>
   );
 }

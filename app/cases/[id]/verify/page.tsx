@@ -1,7 +1,11 @@
 "use client";
 import { useState, use } from "react";
 import { useRouter } from "next/navigation";
+import { Camera } from "lucide-react";
 import { apiFetch } from "@/lib/liffClient";
+import { AppHeader } from "@/components/app-header";
+import { Button } from "@/components/ui/button";
+import { Field, inputClass } from "@/components/ui/field";
 
 const METHODS = ["運転免許証", "マイナンバーカード", "在留カード", "パスポート", "その他"];
 
@@ -48,46 +52,60 @@ export default function VerifyPage({ params }: { params: Promise<{ id: string }>
   }
 
   return (
-    <main className="p-4 space-y-3">
-      <h1 className="text-lg font-bold">本人確認</h1>
-      <label className="block text-sm">確認方法</label>
-      <select
-        className="border p-2 w-full"
-        value={method}
-        onChange={(e) => setMethod(e.target.value)}
-      >
-        {METHODS.map((m) => (
-          <option key={m} value={m}>
-            {m}
-          </option>
-        ))}
-      </select>
-      <input
-        className="border p-2 w-full"
-        placeholder="職業"
-        value={occupation}
-        onChange={(e) => setOccupation(e.target.value)}
-      />
-      <input
-        className="border p-2 w-full"
-        type="number"
-        inputMode="numeric"
-        placeholder="生年（西暦 例:1985）"
-        value={birthYear}
-        onChange={(e) => setBirthYear(e.target.value)}
-      />
-      <label className="block text-sm">身分証の写真</label>
-      <input
-        className="border p-2 w-full"
-        type="file"
-        accept="image/*"
-        capture="environment"
-        onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-      />
-      {msg && <p className="text-red-600">{msg}</p>}
-      <button onClick={save} className="bg-black text-white w-full py-3 rounded">
-        本人確認を保存
-      </button>
+    <main>
+      <AppHeader title="本人確認" backHref={`/cases/${id}`} />
+      <section className="px-5 pt-6 space-y-4">
+        <Field label="確認方法">
+          <select
+            className={inputClass}
+            value={method}
+            onChange={(e) => setMethod(e.target.value)}
+          >
+            {METHODS.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="職業" required>
+          <input
+            className={inputClass}
+            placeholder="職業"
+            value={occupation}
+            onChange={(e) => setOccupation(e.target.value)}
+          />
+        </Field>
+        <Field label="生年（西暦）" required>
+          <input
+            className={inputClass}
+            type="number"
+            inputMode="numeric"
+            placeholder="生年（西暦 例:1985）"
+            value={birthYear}
+            onChange={(e) => setBirthYear(e.target.value)}
+          />
+        </Field>
+        <Field label="身分証の写真">
+          <label className="w-full border border-border rounded-md px-3 h-12 bg-surface text-muted flex items-center gap-2 cursor-pointer active:bg-border/40">
+            <Camera className="w-4 h-4" />
+            <span className="text-sm truncate">
+              {file ? file.name : "写真を撮影 / 選択"}
+            </span>
+            <input
+              className="hidden"
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            />
+          </label>
+        </Field>
+        {msg && <p className="text-danger text-sm">{msg}</p>}
+        <Button onClick={save} size="lg">
+          本人確認を保存
+        </Button>
+      </section>
     </main>
   );
 }

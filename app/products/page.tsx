@@ -1,8 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import { apiFetch } from "@/lib/liffClient";
 import { formatYen } from "@/lib/money";
+import { AppHeader } from "@/components/app-header";
+import { Card } from "@/components/ui/card";
+import { StatusBadge } from "@/components/status-badge";
+import { cn } from "@/lib/cn";
 
 type Prod = {
   id: string;
@@ -24,34 +28,50 @@ export default function ProductsPage() {
     apiFetch<Prod[]>(`/api/products?status=${tab}`).then((r) => r.ok && setRows(r.data ?? []));
   }, [tab]);
   return (
-    <main className="p-4 space-y-4">
-      <h1 className="text-lg font-bold">在庫</h1>
-      <div className="flex gap-2">
+    <main>
+      <AppHeader title="在庫一覧" showLogo={false} />
+      <div className="px-5 pt-4 flex gap-2">
         {TABS.map(([v, l]) => (
           <button
             key={v}
             onClick={() => setTab(v)}
-            className={`px-3 py-1 rounded ${tab === v ? "bg-black text-white" : "bg-gray-200"}`}
+            className={cn(
+              "px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
+              tab === v
+                ? "bg-primary text-white"
+                : "bg-surface border border-border text-muted"
+            )}
           >
             {l}
           </button>
         ))}
       </div>
-      <ul className="divide-y">
+      <section className="px-5 pt-4 space-y-3">
         {rows.map((p) => (
-          <li key={p.id}>
-            <Link href={`/products/${p.id}`} className="flex justify-between py-3">
-              <span>
-                {p.name}
-                <br />
-                <span className="text-xs text-gray-500">{p.acquired_customer?.name}</span>
-              </span>
-              <span>原価 {formatYen(p.cost)}</span>
-            </Link>
-          </li>
+          <Card key={p.id} href={`/products/${p.id}`}>
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <div className="mb-1.5">
+                  <StatusBadge status={p.status} kind="product" />
+                </div>
+                <h3 className="text-base font-semibold mb-0.5 truncate">{p.name}</h3>
+                {p.acquired_customer?.name && (
+                  <p className="text-xs text-muted">
+                    {p.acquired_customer.name} 様
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <span className="text-sm text-muted">原価 {formatYen(p.cost)}</span>
+                <ChevronRight className="w-5 h-5 text-subtle" />
+              </div>
+            </div>
+          </Card>
         ))}
-        {rows.length === 0 && <li className="py-6 text-gray-400">該当なし</li>}
-      </ul>
+        {rows.length === 0 && (
+          <p className="py-10 text-center text-subtle text-sm">該当なし</p>
+        )}
+      </section>
     </main>
   );
 }

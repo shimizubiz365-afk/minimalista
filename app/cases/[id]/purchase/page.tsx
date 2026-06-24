@@ -1,7 +1,11 @@
 "use client";
 import { useState, use } from "react";
 import { useRouter } from "next/navigation";
+import { Camera } from "lucide-react";
 import { apiFetch } from "@/lib/liffClient";
+import { AppHeader } from "@/components/app-header";
+import { Button } from "@/components/ui/button";
+import { Field, inputClass } from "@/components/ui/field";
 
 export default function PurchaseInput({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -48,51 +52,71 @@ export default function PurchaseInput({ params }: { params: Promise<{ id: string
   }
 
   return (
-    <main className="p-4 space-y-3">
-      <h1 className="text-lg font-bold">買取入力</h1>
-      <input
-        className="border p-2 w-full"
-        placeholder="品名"
-        value={form.name}
-        onChange={(e) => setForm({ ...form, name: e.target.value })}
-      />
-      <input
-        className="border p-2 w-full"
-        placeholder="ブランド"
-        value={form.brand}
-        onChange={(e) => setForm({ ...form, brand: e.target.value })}
-      />
-      <input
-        className="border p-2 w-full"
-        placeholder="型番"
-        value={form.model}
-        onChange={(e) => setForm({ ...form, model: e.target.value })}
-      />
-      <input
-        className="border p-2 w-full"
-        placeholder="状態"
-        value={form.condition}
-        onChange={(e) => setForm({ ...form, condition: e.target.value })}
-      />
-      <input
-        className="border p-2 w-full"
-        type="number"
-        inputMode="numeric"
-        placeholder="買取額（円）"
-        value={form.amount}
-        onChange={(e) => setForm({ ...form, amount: e.target.value })}
-      />
-      <input
-        className="border p-2 w-full"
-        type="file"
-        accept="image/*"
-        capture="environment"
-        onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-      />
-      {msg && <p className="text-red-600">{msg}</p>}
-      <button onClick={save} className="bg-black text-white w-full py-3 rounded">
-        保存
-      </button>
+    <main>
+      <AppHeader title="買取入力" backHref={`/cases/${id}`} />
+      <section className="px-5 pt-6 space-y-4">
+        <Field label="品名" required>
+          <input
+            className={inputClass}
+            placeholder="品名"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+          />
+        </Field>
+        <Field label="ブランド">
+          <input
+            className={inputClass}
+            placeholder="ブランド"
+            value={form.brand}
+            onChange={(e) => setForm({ ...form, brand: e.target.value })}
+          />
+        </Field>
+        <Field label="型番">
+          <input
+            className={inputClass}
+            placeholder="型番"
+            value={form.model}
+            onChange={(e) => setForm({ ...form, model: e.target.value })}
+          />
+        </Field>
+        <Field label="状態">
+          <input
+            className={inputClass}
+            placeholder="状態"
+            value={form.condition}
+            onChange={(e) => setForm({ ...form, condition: e.target.value })}
+          />
+        </Field>
+        <Field label="買取額（円）" required>
+          <input
+            className={inputClass}
+            type="number"
+            inputMode="numeric"
+            placeholder="買取額（円）"
+            value={form.amount}
+            onChange={(e) => setForm({ ...form, amount: e.target.value })}
+          />
+        </Field>
+        <Field label="写真">
+          <label className="w-full border border-border rounded-md px-3 h-12 bg-surface text-muted flex items-center gap-2 cursor-pointer active:bg-border/40">
+            <Camera className="w-4 h-4" />
+            <span className="text-sm truncate">
+              {file ? file.name : "写真を撮影 / 選択"}
+            </span>
+            <input
+              className="hidden"
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            />
+          </label>
+        </Field>
+        {msg && <p className="text-danger text-sm">{msg}</p>}
+        <Button onClick={save} size="lg">
+          保存
+        </Button>
+      </section>
     </main>
   );
 }

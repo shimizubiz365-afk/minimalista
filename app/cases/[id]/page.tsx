@@ -1,9 +1,14 @@
 "use client";
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
+import { Plus, ChevronRight, Check, FileText, ExternalLink } from "lucide-react";
 import { apiFetch } from "@/lib/liffClient";
 import { formatYen } from "@/lib/money";
 import { label, CASE_STATUS_LABELS } from "@/lib/labels";
+import { AppHeader } from "@/components/app-header";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Field, inputClass } from "@/components/ui/field";
 
 type Detail = {
   case: {
@@ -72,140 +77,175 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
       load();
     } else setMsg(r.error);
   }
-  if (!d) return <main className="p-4">{msg ?? "読み込み中..."}</main>;
+  if (!d)
+    return (
+      <main>
+        <AppHeader title="案件詳細" backHref="/cases" />
+        <p className="px-5 pt-10 text-center text-subtle text-sm">
+          {msg ?? "読み込み中..."}
+        </p>
+      </main>
+    );
 
   const buyTotal = d.purchase_items.reduce((a, i) => a + i.amount, 0);
   const workTotal = d.collection_items.reduce((a, i) => a + i.work_fee, 0);
 
   return (
-    <main className="p-4 space-y-4">
-      <div>
-        <h1 className="text-lg font-bold">
-          {d.customer.name}（{d.customer.customer_no}）
-        </h1>
-        <p className="text-sm text-gray-500">
-          {d.customer.phone}・{d.customer.address}
-        </p>
-        <p className="text-sm">
-          訪問: {d.case.visit_at ?? "未定"}・{d.case.area}
-        </p>
-      </div>
-
-      <div>
-        <label className="text-sm">ステータス</label>
-        <select
-          className="border p-2 w-full"
-          value={d.case.status}
-          onChange={(e) => setStatus(e.target.value)}
-        >
-          {STATUSES.map((st) => (
-            <option key={st} value={st}>
-              {label(CASE_STATUS_LABELS, st)}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <section>
-        <h2 className="font-bold">本人確認</h2>
-        {d.case.verification_method ? (
-          <p className="text-sm text-green-700">確認済み（{d.case.verification_method}）</p>
-        ) : (
-          <Link href={`/cases/${id}/verify`} className="text-blue-600">
-            本人確認を実施
-          </Link>
-        )}
-      </section>
-
-      <section>
-        <div className="flex justify-between">
-          <h2 className="font-bold">買取明細</h2>
-          <Link className="text-blue-600" href={`/cases/${id}/purchase`}>
-            ＋入力
-          </Link>
+    <main>
+      <AppHeader title="案件詳細" backHref="/cases" />
+      <section className="px-5 pt-6 space-y-4">
+        <div>
+          <p className="text-xs text-muted mb-0.5">{d.customer.customer_no}</p>
+          <h1 className="text-xl font-semibold">{d.customer.name} 様</h1>
+          <p className="text-sm text-muted mt-1">
+            {d.customer.phone}・{d.customer.address}
+          </p>
+          <p className="text-sm text-muted">
+            訪問: {d.case.visit_at ?? "未定"}・{d.case.area}
+          </p>
         </div>
-        {d.purchase_items.map((i) => (
-          <div key={i.id} className="flex justify-between py-1 border-b">
-            <span>{i.name}</span>
-            <span>{formatYen(i.amount)}</span>
-          </div>
-        ))}
-        <div className="text-right font-bold mt-1">買取合計 {formatYen(buyTotal)}</div>
-        <button
-          onClick={() => issue("purchase-slip")}
-          className="mt-2 bg-black text-white w-full py-2 rounded disabled:opacity-40"
-          disabled={d.purchase_items.length === 0}
-        >
-          買取伝票PDF発行
-        </button>
-      </section>
 
-      <section>
-        <div className="flex justify-between">
-          <h2 className="font-bold">回収明細</h2>
-          <Link className="text-blue-600" href={`/cases/${id}/collection`}>
-            ＋入力
-          </Link>
-        </div>
-        {d.collection_items.map((i) => (
-          <div key={i.id} className="flex justify-between py-1 border-b">
-            <span>{i.item_name}</span>
-            <span>{formatYen(i.work_fee)}</span>
-          </div>
-        ))}
-        <div className="text-right font-bold mt-1">作業費合計 {formatYen(workTotal)}</div>
-        <button
-          onClick={() => issue("receipt")}
-          className="mt-2 bg-black text-white w-full py-2 rounded disabled:opacity-40"
-          disabled={d.collection_items.length === 0}
-        >
-          領収書PDF発行
-        </button>
-      </section>
+        <Field label="ステータス">
+          <select
+            className={inputClass}
+            value={d.case.status}
+            onChange={(e) => setStatus(e.target.value)}
+          >
+            {STATUSES.map((st) => (
+              <option key={st} value={st}>
+                {label(CASE_STATUS_LABELS, st)}
+              </option>
+            ))}
+          </select>
+        </Field>
 
-      <section>
-        <h2 className="font-bold">在庫化</h2>
-        <Link href={`/cases/${id}/products`} className="text-blue-600">
-          この案件を商品化する
-        </Link>
-      </section>
-
-      <section className="border-t pt-3">
-        <h2 className="font-bold">精算</h2>
-        {d.case.status === "closed" ? (
-          <p className="text-sm text-green-700">精算確定済み（クローズ）</p>
-        ) : (
-          <>
-            <label className="text-sm">受領/支払 現金（円）</label>
-            <input
-              className="border p-2 w-full"
-              type="number"
-              inputMode="numeric"
-              value={cash}
-              onChange={(e) => setCash(e.target.value)}
-              placeholder={`差引: ${formatYen(buyTotal - workTotal)}`}
-            />
-            <button
-              onClick={settle}
-              className="mt-2 bg-red-700 text-white w-full py-2 rounded"
+        {/* 本人確認 */}
+        <Card>
+          <h2 className="text-base font-semibold mb-2">本人確認</h2>
+          {d.case.verification_method ? (
+            <p className="text-sm text-success flex items-center gap-1.5">
+              <Check className="w-4 h-4" /> 確認済み（{d.case.verification_method}）
+            </p>
+          ) : (
+            <Link
+              href={`/cases/${id}/verify`}
+              className="text-info text-sm flex items-center gap-1"
             >
-              精算を確定する（台帳生成・クローズ）
-            </button>
-          </>
+              本人確認を実施 <ChevronRight className="w-4 h-4" />
+            </Link>
+          )}
+        </Card>
+
+        {/* 買取明細 */}
+        <Card>
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="text-base font-semibold">買取明細</h2>
+            <Link
+              href={`/cases/${id}/purchase`}
+              className="text-info text-sm flex items-center gap-0.5"
+            >
+              <Plus className="w-4 h-4" /> 入力
+            </Link>
+          </div>
+          {d.purchase_items.map((i) => (
+            <div
+              key={i.id}
+              className="flex justify-between py-2 border-b border-border text-sm"
+            >
+              <span>{i.name}</span>
+              <span>{formatYen(i.amount)}</span>
+            </div>
+          ))}
+          <div className="text-right font-semibold mt-2 mb-3">
+            買取合計 {formatYen(buyTotal)}
+          </div>
+          <Button
+            variant="secondary"
+            onClick={() => issue("purchase-slip")}
+            disabled={d.purchase_items.length === 0}
+          >
+            <FileText className="w-4 h-4" /> 買取伝票PDF発行
+          </Button>
+        </Card>
+
+        {/* 回収明細 */}
+        <Card>
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="text-base font-semibold">回収明細</h2>
+            <Link
+              href={`/cases/${id}/collection`}
+              className="text-info text-sm flex items-center gap-0.5"
+            >
+              <Plus className="w-4 h-4" /> 入力
+            </Link>
+          </div>
+          {d.collection_items.map((i) => (
+            <div
+              key={i.id}
+              className="flex justify-between py-2 border-b border-border text-sm"
+            >
+              <span>{i.item_name}</span>
+              <span>{formatYen(i.work_fee)}</span>
+            </div>
+          ))}
+          <div className="text-right font-semibold mt-2 mb-3">
+            作業費合計 {formatYen(workTotal)}
+          </div>
+          <Button
+            variant="secondary"
+            onClick={() => issue("receipt")}
+            disabled={d.collection_items.length === 0}
+          >
+            <FileText className="w-4 h-4" /> 領収書PDF発行
+          </Button>
+        </Card>
+
+        {/* 在庫化 */}
+        <Card href={`/cases/${id}/products`}>
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold">この案件を商品化する</h2>
+            <ChevronRight className="w-5 h-5 text-subtle" />
+          </div>
+        </Card>
+
+        {/* 精算 */}
+        <Card>
+          <h2 className="text-base font-semibold mb-2">精算</h2>
+          {d.case.status === "closed" ? (
+            <p className="text-sm text-success flex items-center gap-1.5">
+              <Check className="w-4 h-4" /> 精算確定済み（クローズ）
+            </p>
+          ) : (
+            <>
+              <Field label="受領/支払 現金（円）">
+                <input
+                  className={inputClass}
+                  type="number"
+                  inputMode="numeric"
+                  value={cash}
+                  onChange={(e) => setCash(e.target.value)}
+                  placeholder={`差引: ${formatYen(buyTotal - workTotal)}`}
+                />
+              </Field>
+              <Button variant="danger" onClick={settle} className="mt-3">
+                精算を確定する（台帳生成・クローズ）
+              </Button>
+            </>
+          )}
+        </Card>
+
+        {msg && <p className="text-danger text-sm">{msg}</p>}
+        {pdfUrl && (
+          <a
+            href={pdfUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="w-full h-12 rounded-md bg-success text-white font-medium flex items-center justify-center gap-2"
+          >
+            <ExternalLink className="w-4 h-4" /> 発行したPDFを開く
+          </a>
         )}
       </section>
-
-      {msg && <p className="text-red-600">{msg}</p>}
-      {pdfUrl && (
-        <a
-          href={pdfUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="block text-center bg-green-600 text-white py-3 rounded"
-        >
-          発行したPDFを開く
-        </a>
-      )}
     </main>
   );
 }

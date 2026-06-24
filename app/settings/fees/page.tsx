@@ -1,6 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
+import { Plus } from "lucide-react";
 import { apiFetch } from "@/lib/liffClient";
+import { AppHeader } from "@/components/app-header";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Field, inputClass } from "@/components/ui/field";
 
 type Fee = {
   id: string;
@@ -47,63 +52,72 @@ export default function FeesPage() {
     else setMsg(r.error);
   }
   return (
-    <main className="p-4 space-y-3">
-      <h1 className="text-lg font-bold">フィー率設定</h1>
-      <p className="text-xs text-gray-500">
-        率は小数（5% = 0.05）。ambassador_share は参考値（計算は tk_share の残差）。
-      </p>
-      <label className="text-sm block">
-        買取料率
-        <input
-          className="border p-2 w-full"
-          value={form.rate_buy}
-          onChange={(e) => setForm({ ...form, rate_buy: e.target.value })}
-        />
-      </label>
-      <label className="text-sm block">
-        作業費料率
-        <input
-          className="border p-2 w-full"
-          value={form.rate_work}
-          onChange={(e) => setForm({ ...form, rate_work: e.target.value })}
-        />
-      </label>
-      <label className="text-sm block">
-        TK取り分
-        <input
-          className="border p-2 w-full"
-          value={form.tk_share}
-          onChange={(e) => setForm({ ...form, tk_share: e.target.value })}
-        />
-      </label>
-      <label className="text-sm block">
-        アンバサダー取り分(参考)
-        <input
-          className="border p-2 w-full"
-          value={form.ambassador_share}
-          onChange={(e) => setForm({ ...form, ambassador_share: e.target.value })}
-        />
-      </label>
-      <label className="text-sm block">
-        適用開始日
-        <input
-          className="border p-2 w-full"
-          type="date"
-          value={form.effective_from}
-          onChange={(e) => setForm({ ...form, effective_from: e.target.value })}
-        />
-      </label>
-      {msg && <p className="text-red-600">{msg}</p>}
-      <button onClick={add} className="bg-black text-white w-full py-2 rounded">
-        この率を追加
-      </button>
-      <ul className="divide-y text-sm">
-        {rows.map((f) => (
-          <li key={f.id} className="py-2">
-            {f.effective_from}〜 買{f.rate_buy}/作{f.rate_work}/TK{f.tk_share}
-          </li>
-        ))}
-      </ul>
+    <main>
+      <AppHeader title="フィー率" backHref="/settings" />
+      <section className="px-5 pt-6 space-y-4">
+        <p className="text-xs text-muted">
+          率は小数（5% = 0.05）。ambassador_share は参考値（計算は tk_share の残差）。
+        </p>
+        <Card>
+          <div className="space-y-3">
+            <Field label="買取料率">
+              <input
+                className={inputClass}
+                value={form.rate_buy}
+                onChange={(e) => setForm({ ...form, rate_buy: e.target.value })}
+              />
+            </Field>
+            <Field label="作業費料率">
+              <input
+                className={inputClass}
+                value={form.rate_work}
+                onChange={(e) => setForm({ ...form, rate_work: e.target.value })}
+              />
+            </Field>
+            <Field label="TK取り分">
+              <input
+                className={inputClass}
+                value={form.tk_share}
+                onChange={(e) => setForm({ ...form, tk_share: e.target.value })}
+              />
+            </Field>
+            <Field label="アンバサダー取り分(参考)">
+              <input
+                className={inputClass}
+                value={form.ambassador_share}
+                onChange={(e) =>
+                  setForm({ ...form, ambassador_share: e.target.value })
+                }
+              />
+            </Field>
+            <Field label="適用開始日" required>
+              <input
+                className={inputClass}
+                type="date"
+                value={form.effective_from}
+                onChange={(e) =>
+                  setForm({ ...form, effective_from: e.target.value })
+                }
+              />
+            </Field>
+            {msg && <p className="text-danger text-sm">{msg}</p>}
+            <Button onClick={add}>
+              <Plus className="w-4 h-4" /> この率を追加
+            </Button>
+          </div>
+        </Card>
+
+        <div className="space-y-3">
+          {rows.map((f) => (
+            <Card key={f.id}>
+              <p className="text-sm font-medium">{f.effective_from}〜</p>
+              <p className="text-xs text-muted mt-0.5">
+                買{f.rate_buy}／作{f.rate_work}／TK{f.tk_share}
+              </p>
+            </Card>
+          ))}
+        </div>
+      </section>
     </main>
   );
 }
