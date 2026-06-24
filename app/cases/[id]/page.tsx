@@ -23,7 +23,7 @@ type Detail = {
   purchase_items: { id: string; name: string; amount: number }[];
   collection_items: { id: string; item_name: string; work_fee: number }[];
 };
-const STATUSES = ["reserved", "visiting", "visited", "pending_pickup", "closed", "cancelled"];
+const STATUSES = ["reserved", "visiting", "pending_pickup", "closed", "cancelled"];
 
 export default function CaseDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);

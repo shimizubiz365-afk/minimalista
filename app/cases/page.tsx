@@ -18,7 +18,7 @@ type CaseRow = {
 const TABS = [
   ["reserved", "予約"],
   ["visiting", "訪問中"],
-  ["visited", "訪問完了"],
+  ["closed", "完了"],
 ] as const;
 
 function fmtVisit(v: string | null) {
