@@ -34,14 +34,20 @@ export async function PATCH(
   const { id } = await params;
   const body = await req.json();
   const allowed = ["reserved", "visiting", "visited", "pending_pickup", "closed", "cancelled"];
-  if (!allowed.includes(body.status)) return fail("不正なステータス", 400);
-  const patch: Record<string, unknown> = { status: body.status };
-  if (body.status === "closed") patch.closed_at = new Date().toISOString();
+  const patch: Record<string, unknown> = {};
+  if (body.status !== undefined) {
+    if (!allowed.includes(body.status)) return fail("不正なステータス", 400);
+    patch.status = body.status;
+    if (body.status === "closed") patch.closed_at = new Date().toISOString();
+  }
+  if (body.visit_at !== undefined) patch.visit_at = body.visit_at || null;
+  if (body.memo !== undefined) patch.memo = body.memo || null;
+  if (Object.keys(patch).length === 0) return fail("更新項目がありません", 400);
   const { data, error } = await supabaseAdmin()
     .from("cases")
     .update(patch)
     .eq("id", id)
-    .select("id,status")
+    .select("id,status,visit_at,memo")
     .single();
   if (error) return fail(error.message, 500);
   return ok(data);

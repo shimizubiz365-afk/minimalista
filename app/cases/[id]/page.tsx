@@ -1,14 +1,14 @@
 "use client";
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
-import { Plus, ChevronRight, Check, FileText, ExternalLink } from "lucide-react";
+import { Plus, ChevronRight, Check, FileText, ExternalLink, CalendarCheck } from "lucide-react";
 import { apiFetch } from "@/lib/liffClient";
 import { formatYen } from "@/lib/money";
 import { label, CASE_STATUS_LABELS } from "@/lib/labels";
 import { AppHeader } from "@/components/app-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Field, inputClass } from "@/components/ui/field";
+import { Field, inputClass, textareaClass } from "@/components/ui/field";
 
 type Detail = {
   case: {
@@ -31,11 +31,31 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
   const [msg, setMsg] = useState<string>();
   const [pdfUrl, setPdfUrl] = useState<string>();
   const [cash, setCash] = useState("");
+  const [visitAt, setVisitAt] = useState("");
+  const [memo, setMemo] = useState("");
+  const [saving, setSaving] = useState(false);
 
   async function load() {
     const r = await apiFetch<Detail>(`/api/cases/${id}`);
-    if (r.ok) setD(r.data!);
-    else setMsg(r.error);
+    if (r.ok) {
+      setD(r.data!);
+      setVisitAt(r.data!.case.visit_at ? r.data!.case.visit_at.slice(0, 16) : "");
+      setMemo(r.data!.case.memo ?? "");
+    } else setMsg(r.error);
+  }
+
+  async function saveSchedule() {
+    setSaving(true);
+    setMsg(undefined);
+    const r = await apiFetch(`/api/cases/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ visit_at: visitAt || null, memo }),
+    });
+    setSaving(false);
+    if (r.ok) {
+      setMsg("予約を確定しました");
+      load();
+    } else setMsg(r.error);
   }
   useEffect(() => {
     load();
@@ -104,6 +124,33 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
             訪問: {d.case.visit_at ?? "未定"}・{d.case.area}
           </p>
         </div>
+
+        {/* 予約・訪問日程（電話後にここで確定） */}
+        <Card>
+          <h2 className="text-base font-semibold mb-3 flex items-center gap-1.5">
+            <CalendarCheck className="w-4 h-4 text-primary" /> 予約・訪問日程
+          </h2>
+          <Field label="訪問日時">
+            <input
+              className={inputClass}
+              type="datetime-local"
+              value={visitAt}
+              onChange={(e) => setVisitAt(e.target.value)}
+            />
+          </Field>
+          <Field label="備考（通話メモ）" className="mt-3">
+            <textarea
+              className={textareaClass}
+              rows={3}
+              value={memo}
+              onChange={(e) => setMemo(e.target.value)}
+              placeholder="例: 6/27 14時で確定。マンション3F、エレベーター無し"
+            />
+          </Field>
+          <Button onClick={saveSchedule} disabled={saving} className="mt-3">
+            <CalendarCheck className="w-4 h-4" /> {visitAt ? "予約を確定する" : "保存する"}
+          </Button>
+        </Card>
 
         <Field label="ステータス">
           <select
