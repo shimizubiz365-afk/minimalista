@@ -1,7 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Plus, ChevronRight } from "lucide-react";
 import { apiFetch } from "@/lib/liffClient";
+import { AppHeader } from "@/components/app-header";
+import { Card } from "@/components/ui/card";
+import { StatusBadge } from "@/components/status-badge";
+import { cn } from "@/lib/cn";
 
 type CaseRow = {
   id: string;
@@ -16,6 +21,14 @@ const TABS = [
   ["visited", "訪問完了"],
 ] as const;
 
+function fmtVisit(v: string | null) {
+  if (!v) return "日時未定";
+  const m = v.match(/(\d{4})-(\d{2})-(\d{2})T?(\d{2})?:?(\d{2})?/);
+  if (!m) return v;
+  const [, , mo, d, h, mi] = m;
+  return h ? `${+mo}/${+d} ${h}:${mi}` : `${+mo}/${+d}`;
+}
+
 export default function CasesPage() {
   const [tab, setTab] = useState<string>("reserved");
   const [rows, setRows] = useState<CaseRow[]>([]);
@@ -28,38 +41,63 @@ export default function CasesPage() {
   }, [tab]);
 
   return (
-    <main className="p-4 space-y-4">
-      <div className="flex justify-between items-center">
-        <h1 className="text-lg font-bold">案件一覧</h1>
-        <Link href="/cases/new" className="rounded bg-black text-white px-3 py-2 text-sm">
-          ＋ 予約登録
-        </Link>
-      </div>
-      <div className="flex gap-2">
+    <main>
+      <AppHeader
+        title="案件一覧"
+        right={
+          <Link
+            href="/cases/new"
+            className="h-9 px-3 rounded-md bg-primary text-white text-sm font-medium flex items-center gap-1"
+          >
+            <Plus className="w-4 h-4" /> 予約
+          </Link>
+        }
+      />
+
+      {/* タブ */}
+      <div className="px-5 pt-4 flex gap-2">
         {TABS.map(([v, label]) => (
           <button
             key={v}
             onClick={() => setTab(v)}
-            className={`px-3 py-1 rounded ${tab === v ? "bg-black text-white" : "bg-gray-200"}`}
+            className={cn(
+              "px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
+              tab === v
+                ? "bg-primary text-white"
+                : "bg-surface border border-border text-muted"
+            )}
           >
             {label}
           </button>
         ))}
       </div>
-      {err && <p className="text-red-600">{err}</p>}
-      <ul className="divide-y">
+
+      {err && <p className="px-5 pt-4 text-danger text-sm">{err}</p>}
+
+      <section className="px-5 pt-4 space-y-3">
         {rows.map((c) => (
-          <li key={c.id}>
-            <Link href={`/cases/${c.id}`} className="block py-3">
-              <div className="font-medium">{c.customer?.name}</div>
-              <div className="text-sm text-gray-500">
-                {c.visit_at ?? "日時未定"}・{c.area ?? "エリア未定"}
+          <Card key={c.id} href={`/cases/${c.id}`}>
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="mb-1.5">
+                  <StatusBadge status={c.status} />
+                </div>
+                <h3 className="text-base font-semibold mb-0.5">
+                  {c.customer?.name ?? "（顧客未設定）"} 様
+                </h3>
+                <p className="text-sm text-muted">
+                  {fmtVisit(c.visit_at)}
+                  {c.area ? `・${c.area}` : ""}
+                </p>
               </div>
-            </Link>
-          </li>
+              <ChevronRight className="w-5 h-5 text-subtle shrink-0 mt-1" />
+            </div>
+          </Card>
         ))}
-        {rows.length === 0 && !err && <li className="py-6 text-gray-400">該当なし</li>}
-      </ul>
+        {rows.length === 0 && !err && (
+          <p className="py-10 text-center text-subtle text-sm">該当なし</p>
+        )}
+      </section>
     </main>
   );
 }

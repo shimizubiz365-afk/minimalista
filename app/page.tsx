@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import liff from "@line/liff";
-import { ArrowRight, Phone, ClipboardList } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Phone, ChevronRight } from "lucide-react";
 import { apiFetch } from "@/lib/liffClient";
 import { AppHeader } from "@/components/app-header";
 import { Card } from "@/components/ui/card";
@@ -161,30 +162,33 @@ export default function Home() {
               <span className="text-sm text-muted">{pending.length}件</span>
             </div>
             {pending.map((c) => (
-              <Card key={c.id} href={`/cases/${c.id}`} className="mb-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="flex items-center gap-1.5 text-xs text-warning">
-                    <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse-dot" />
-                    日程未確定
-                  </span>
-                </div>
-                <h3 className="text-lg font-semibold mb-1">
-                  {c.customer?.name ?? "（顧客未設定）"} 様
-                </h3>
-                {c.desired_items && (
-                  <p className="text-xs text-muted mb-4">{c.desired_items}</p>
+              <Card key={c.id} className="mb-3">
+                <Link
+                  href={`/cases/${c.id}`}
+                  className="flex items-start justify-between gap-2"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 text-xs text-warning mb-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse-dot" />
+                      日程未確定
+                    </div>
+                    <h3 className="text-lg font-semibold mb-1">
+                      {c.customer?.name ?? "（顧客未設定）"} 様
+                    </h3>
+                    {c.desired_items && (
+                      <p className="text-xs text-muted">{c.desired_items}</p>
+                    )}
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-subtle shrink-0 mt-0.5" />
+                </Link>
+                {c.customer?.phone && (
+                  <a
+                    href={`tel:${c.customer.phone}`}
+                    className="mt-3 w-full h-12 text-white rounded-md font-medium text-base flex items-center justify-center gap-2 bg-warning active:bg-warning/90"
+                  >
+                    <Phone className="w-4 h-4" /> {c.customer.phone} に電話
+                  </a>
                 )}
-                <div className="w-full h-12 text-white rounded-md font-medium text-base flex items-center justify-center gap-2 bg-warning">
-                  {c.customer?.phone ? (
-                    <>
-                      <Phone className="w-4 h-4" /> 電話する
-                    </>
-                  ) : (
-                    <>
-                      <ClipboardList className="w-4 h-4" /> 確認する
-                    </>
-                  )}
-                </div>
               </Card>
             ))}
           </section>
