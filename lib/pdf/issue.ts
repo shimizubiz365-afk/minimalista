@@ -10,14 +10,15 @@ const PDF_LABEL: Record<string, string> = {
   purchase_slip: "買取伝票",
   receipt: "領収書",
   work_order: "作業依頼書",
+  estimate: "お見積書",
 };
 
-// doc_type enum は purchase_slip/receipt のみ。それ以外(work_order)は documents 行を作らない。
+// doc_type enum は purchase_slip/receipt のみ。それ以外(work_order/estimate)は documents 行を作らない。
 const RECORDED_TYPES = new Set(["purchase_slip", "receipt"]);
 
 export async function storePdf(
   caseId: string,
-  type: "purchase_slip" | "receipt" | "work_order",
+  type: "purchase_slip" | "receipt" | "work_order" | "estimate",
   buf: Buffer
 ): Promise<{ document_id: string; signed_url: string }> {
   const db = supabaseAdmin();

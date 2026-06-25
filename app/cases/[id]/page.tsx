@@ -85,7 +85,7 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
     if (r.ok) load();
     else setMsg(r.error);
   }
-  async function issue(kind: "purchase-slip" | "receipt" | "work-order") {
+  async function issue(kind: "purchase-slip" | "receipt" | "work-order" | "estimate") {
     setMsg("発行中...");
     const r = await apiFetch<{ signed_url: string }>(`/api/documents/${kind}`, {
       method: "POST",
@@ -399,6 +399,27 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
             </Button>
             {pdfUrls["receipt"] && (
               <PdfOpen url={pdfUrls["receipt"]} label="領収書を開く" />
+            )}
+          </div>
+        </Card>
+
+        {/* お見積書（買取査定額−回収作業費の差引・取引前の提示用） */}
+        <Card>
+          <h2 className="text-base font-semibold mb-1">お見積書</h2>
+          <p className="text-xs text-muted mb-3">
+            買取査定額と回収作業費をまとめ、差引の金額を1枚で提示します（取引前のお客様提示用）。
+          </p>
+          <div className="space-y-2">
+            <Button
+              onClick={() => issue("estimate")}
+              disabled={
+                d.purchase_items.length === 0 && d.collection_items.length === 0
+              }
+            >
+              <FileText className="w-4 h-4" /> お見積書PDF発行
+            </Button>
+            {pdfUrls["estimate"] && (
+              <PdfOpen url={pdfUrls["estimate"]} label="お見積書を開く" />
             )}
           </div>
         </Card>
