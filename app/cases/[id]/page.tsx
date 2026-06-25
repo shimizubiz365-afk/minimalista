@@ -36,7 +36,7 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
   const { id } = use(params);
   const [d, setD] = useState<Detail>();
   const [msg, setMsg] = useState<string>();
-  const [pdfUrl, setPdfUrl] = useState<string>();
+  const [pdfUrls, setPdfUrls] = useState<Record<string, string>>({});
   const [cash, setCash] = useState("");
   const [visitAt, setVisitAt] = useState("");
   const [memo, setMemo] = useState("");
@@ -92,7 +92,7 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
       body: JSON.stringify({ case_id: id }),
     });
     if (r.ok) {
-      setPdfUrl(r.data!.signed_url);
+      setPdfUrls((u) => ({ ...u, [kind]: r.data!.signed_url }));
       setMsg(undefined);
     } else setMsg(r.error);
   }
@@ -297,13 +297,18 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
           <div className="text-right font-semibold mt-2 mb-3">
             買取合計 {formatYen(buyTotal)}
           </div>
-          <Button
-            variant="secondary"
-            onClick={() => issue("purchase-slip")}
-            disabled={d.purchase_items.length === 0}
-          >
-            <FileText className="w-4 h-4" /> 買取伝票PDF発行
-          </Button>
+          <div className="space-y-2">
+            <Button
+              variant="secondary"
+              onClick={() => issue("purchase-slip")}
+              disabled={d.purchase_items.length === 0}
+            >
+              <FileText className="w-4 h-4" /> 買取伝票PDF発行
+            </Button>
+            {pdfUrls["purchase-slip"] && (
+              <PdfOpen url={pdfUrls["purchase-slip"]} label="買取伝票を開く" />
+            )}
+          </div>
         </Card>
 
         {/* 作業依頼書（旧:回収明細） */}
@@ -382,6 +387,9 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
             >
               <FileText className="w-4 h-4" /> 作業依頼書PDF発行
             </Button>
+            {pdfUrls["work-order"] && (
+              <PdfOpen url={pdfUrls["work-order"]} label="作業依頼書を開く" />
+            )}
             <Button
               variant="secondary"
               onClick={() => issue("receipt")}
@@ -389,6 +397,9 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
             >
               <FileText className="w-4 h-4" /> 領収書PDF発行
             </Button>
+            {pdfUrls["receipt"] && (
+              <PdfOpen url={pdfUrls["receipt"]} label="領収書を開く" />
+            )}
           </div>
         </Card>
 
@@ -427,17 +438,20 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
         </Card>
 
         {msg && <p className="text-danger text-sm">{msg}</p>}
-        {pdfUrl && (
-          <a
-            href={pdfUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="w-full h-12 rounded-md bg-success text-white font-medium flex items-center justify-center gap-2"
-          >
-            <ExternalLink className="w-4 h-4" /> 発行したPDFを開く
-          </a>
-        )}
       </section>
     </main>
+  );
+}
+
+function PdfOpen({ url, label }: { url: string; label: string }) {
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      className="w-full h-12 rounded-md bg-success text-white font-medium flex items-center justify-center gap-2"
+    >
+      <ExternalLink className="w-4 h-4" /> {label}
+    </a>
   );
 }
