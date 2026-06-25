@@ -61,13 +61,13 @@ export async function POST(req: Request) {
     if (up.error) return fail(up.error.message, 500);
   }
 
+  // NOTE: 本番 media テーブルは purchase_item_id/collection_item_id 列が未追加
+  // (migration 0001 の初回適用版のまま)。Drive が正本なので item 紐付けは省略。
   const { data, error } = await db
     .from("media")
     .insert({
       case_id: caseId,
       kind,
-      purchase_item_id: form.get("purchase_item_id")?.toString() || null,
-      collection_item_id: form.get("collection_item_id")?.toString() || null,
       storage_path: storagePath,
     })
     .select("id, storage_path")
