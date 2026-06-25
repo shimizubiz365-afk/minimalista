@@ -2,7 +2,7 @@ import { ok, fail, requireStaff } from "@/lib/api";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { renderToBuffer } from "@/lib/pdf/renderToBuffer";
 import { Receipt } from "@/lib/pdf/receipt";
-import { sumWorkFees } from "@/lib/money";
+import { sumWorkFees, taxBreakdown, type TaxMode } from "@/lib/money";
 import { storePdf } from "@/lib/pdf/issue";
 
 type Cust = { name: string; address: string | null; customer_no: string };
@@ -10,8 +10,9 @@ type Cust = { name: string; address: string | null; customer_no: string };
 export async function POST(req: Request) {
   const guard = await requireStaff(req);
   if (guard instanceof Response) return guard;
-  const { case_id } = await req.json();
+  const { case_id, tax_mode } = await req.json();
   if (!case_id) return fail("case_id は必須", 400);
+  const mode: TaxMode = tax_mode === "inclusive" ? "inclusive" : "exclusive";
   const db = supabaseAdmin();
   const c = await db
     .from("cases")
@@ -27,14 +28,15 @@ export async function POST(req: Request) {
   if (items.error) return fail(items.error.message, 500);
   const list = items.data ?? [];
   if (list.length === 0) return fail("作業依頼書の明細がありません", 400);
-  const total = sumWorkFees(list);
+  const tax = taxBreakdown(sumWorkFees(list), mode);
   const cust = (c.data as unknown as { customer: Cust }).customer;
   try {
     const buf = await renderToBuffer(
       Receipt({
         customer: { name: cust.name, address: cust.address, customer_no: cust.customer_no },
         items: list,
-        total,
+        tax,
+        taxMode: mode,
         date: new Date().toISOString().slice(0, 10),
         staffName: guard.staff.name,
       })

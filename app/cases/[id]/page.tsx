@@ -10,7 +10,7 @@ import {
   CalendarCheck,
 } from "lucide-react";
 import { apiFetch } from "@/lib/liffClient";
-import { formatYen } from "@/lib/money";
+import { formatYen, taxBreakdown, type TaxMode } from "@/lib/money";
 import { label, CASE_STATUS_LABELS } from "@/lib/labels";
 import { AppHeader } from "@/components/app-header";
 import { Card } from "@/components/ui/card";
@@ -41,6 +41,7 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
   const [visitAt, setVisitAt] = useState("");
   const [memo, setMemo] = useState("");
   const [saving, setSaving] = useState(false);
+  const [taxMode, setTaxMode] = useState<TaxMode>("exclusive");
   const [edit, setEdit] = useState<{
     kind: "p" | "c";
     id: string;
@@ -85,11 +86,14 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
     if (r.ok) load();
     else setMsg(r.error);
   }
-  async function issue(kind: "purchase-slip" | "receipt" | "work-order" | "estimate") {
+  async function issue(
+    kind: "purchase-slip" | "receipt" | "work-order" | "estimate",
+    extra?: Record<string, unknown>
+  ) {
     setMsg("発行中...");
     const r = await apiFetch<{ signed_url: string }>(`/api/documents/${kind}`, {
       method: "POST",
-      body: JSON.stringify({ case_id: id }),
+      body: JSON.stringify({ case_id: id, ...extra }),
     });
     if (r.ok) {
       setPdfUrls((u) => ({ ...u, [kind]: r.data!.signed_url }));
@@ -153,6 +157,7 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
 
   const buyTotal = d.purchase_items.reduce((a, i) => a + i.amount, 0);
   const workTotal = d.collection_items.reduce((a, i) => a + i.work_fee, 0);
+  const workTax = taxBreakdown(workTotal, taxMode);
   const editable = d.case.status !== "closed";
 
   return (
@@ -377,12 +382,51 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
               )}
             </div>
           ))}
-          <div className="text-right font-semibold mt-2 mb-3">
-            作業費合計 {formatYen(workTotal)}
+          {/* 税区分（外税/内税）— 作業依頼書・領収書に反映 */}
+          <div className="mt-3 mb-2">
+            <p className="text-xs text-muted mb-1">税区分（作業依頼書・領収書に反映）</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setTaxMode("exclusive")}
+                className={`flex-1 h-9 rounded-md text-sm font-medium border ${
+                  taxMode === "exclusive"
+                    ? "bg-primary text-white border-primary"
+                    : "bg-surface text-fg border-border"
+                }`}
+              >
+                外税（税抜＋消費税）
+              </button>
+              <button
+                type="button"
+                onClick={() => setTaxMode("inclusive")}
+                className={`flex-1 h-9 rounded-md text-sm font-medium border ${
+                  taxMode === "inclusive"
+                    ? "bg-primary text-white border-primary"
+                    : "bg-surface text-fg border-border"
+                }`}
+              >
+                内税（税込）
+              </button>
+            </div>
+          </div>
+          <div className="text-right text-sm mt-2 mb-3">
+            {taxMode === "exclusive" ? (
+              <>
+                <div className="text-muted">作業費小計（税抜） {formatYen(workTax.subtotal)}</div>
+                <div className="text-muted">消費税（10%） {formatYen(workTax.tax)}</div>
+                <div className="font-semibold">税込合計 {formatYen(workTax.total)}</div>
+              </>
+            ) : (
+              <>
+                <div className="font-semibold">作業費合計（税込） {formatYen(workTax.total)}</div>
+                <div className="text-muted">うち消費税（10%） {formatYen(workTax.tax)}</div>
+              </>
+            )}
           </div>
           <div className="space-y-2">
             <Button
-              onClick={() => issue("work-order")}
+              onClick={() => issue("work-order", { tax_mode: taxMode })}
               disabled={d.collection_items.length === 0}
             >
               <FileText className="w-4 h-4" /> 作業依頼書PDF発行
@@ -392,7 +436,7 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
             )}
             <Button
               variant="secondary"
-              onClick={() => issue("receipt")}
+              onClick={() => issue("receipt", { tax_mode: taxMode })}
               disabled={d.collection_items.length === 0}
             >
               <FileText className="w-4 h-4" /> 領収書PDF発行

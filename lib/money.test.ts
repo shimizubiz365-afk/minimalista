@@ -1,5 +1,15 @@
 import { describe, it, expect } from "vitest";
-import { sumAmounts, sumWorkFees, formatYen, netAmount, grossProfit, sumCosts } from "@/lib/money";
+import {
+  sumAmounts,
+  sumWorkFees,
+  formatYen,
+  netAmount,
+  grossProfit,
+  sumCosts,
+  taxExclusive,
+  taxInclusive,
+  taxBreakdown,
+} from "@/lib/money";
 
 describe("sumAmounts", () => {
   it("空配列は0", () => expect(sumAmounts([])).toBe(0));
@@ -36,4 +46,29 @@ describe("grossProfit", () => {
 describe("sumCosts", () => {
   it("空は0", () => expect(sumCosts([])).toBe(0));
   it("複数", () => expect(sumCosts([{ cost: 4000 }, { cost: 1000 }])).toBe(5000));
+});
+
+describe("taxExclusive(外税)", () => {
+  it("10000税抜→税1000/税込11000", () =>
+    expect(taxExclusive(10000)).toEqual({ subtotal: 10000, tax: 1000, total: 11000 }));
+  it("端数は切り捨て(1055→税105)", () =>
+    expect(taxExclusive(1055)).toEqual({ subtotal: 1055, tax: 105, total: 1160 }));
+  it("0は全て0", () =>
+    expect(taxExclusive(0)).toEqual({ subtotal: 0, tax: 0, total: 0 }));
+});
+
+describe("taxInclusive(内税)", () => {
+  it("11000税込→内税1000/税抜10000", () =>
+    expect(taxInclusive(11000)).toEqual({ subtotal: 10000, tax: 1000, total: 11000 }));
+  it("内税は切り捨て(1080→内税98)", () =>
+    expect(taxInclusive(1080)).toEqual({ subtotal: 982, tax: 98, total: 1080 }));
+});
+
+describe("taxBreakdown", () => {
+  it("exclusiveは外税計算", () =>
+    expect(taxBreakdown(10000, "exclusive").total).toBe(11000));
+  it("inclusiveは内税計算", () =>
+    expect(taxBreakdown(11000, "inclusive").total).toBe(11000));
+  it("inclusiveのtotalは入力額そのまま", () =>
+    expect(taxBreakdown(5000, "inclusive").subtotal).toBe(4546));
 });
