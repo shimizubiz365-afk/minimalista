@@ -8,9 +8,6 @@ import {
   FileText,
   ExternalLink,
   CalendarCheck,
-  Pencil,
-  Trash2,
-  X,
 } from "lucide-react";
 import { apiFetch } from "@/lib/liffClient";
 import { formatYen } from "@/lib/money";
@@ -258,11 +255,17 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
                     value={edit.b}
                     onChange={(e) => setEdit({ ...edit, b: e.target.value })}
                   />
-                  <button onClick={saveItem} className="text-primary p-1" aria-label="保存">
-                    <Check className="w-5 h-5" />
+                  <button
+                    onClick={saveItem}
+                    className="shrink-0 bg-primary text-white rounded-md px-3 h-9 text-sm font-medium"
+                  >
+                    保存
                   </button>
-                  <button onClick={() => setEdit(null)} className="text-subtle p-1" aria-label="取消">
-                    <X className="w-5 h-5" />
+                  <button
+                    onClick={() => setEdit(null)}
+                    className="shrink-0 text-muted rounded-md px-2 h-9 text-sm"
+                  >
+                    取消
                   </button>
                 </div>
               ) : (
@@ -274,17 +277,15 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
                       <>
                         <button
                           onClick={() => setEdit({ kind: "p", id: i.id, a: i.name, b: String(i.amount) })}
-                          className="text-info p-0.5"
-                          aria-label="編集"
+                          className="text-info text-sm font-medium border border-info/40 rounded px-2 py-0.5"
                         >
-                          <Pencil className="w-4 h-4" />
+                          編集
                         </button>
                         <button
                           onClick={() => delItem("p", i.id)}
-                          className="text-danger p-0.5"
-                          aria-label="削除"
+                          className="text-danger text-sm font-medium border border-danger/40 rounded px-2 py-0.5"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          削除
                         </button>
                       </>
                     )}
@@ -332,11 +333,17 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
                     value={edit.b}
                     onChange={(e) => setEdit({ ...edit, b: e.target.value })}
                   />
-                  <button onClick={saveItem} className="text-primary p-1" aria-label="保存">
-                    <Check className="w-5 h-5" />
+                  <button
+                    onClick={saveItem}
+                    className="shrink-0 bg-primary text-white rounded-md px-3 h-9 text-sm font-medium"
+                  >
+                    保存
                   </button>
-                  <button onClick={() => setEdit(null)} className="text-subtle p-1" aria-label="取消">
-                    <X className="w-5 h-5" />
+                  <button
+                    onClick={() => setEdit(null)}
+                    className="shrink-0 text-muted rounded-md px-2 h-9 text-sm"
+                  >
+                    取消
                   </button>
                 </div>
               ) : (
@@ -348,17 +355,15 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
                       <>
                         <button
                           onClick={() => setEdit({ kind: "c", id: i.id, a: i.item_name, b: String(i.work_fee) })}
-                          className="text-info p-0.5"
-                          aria-label="編集"
+                          className="text-info text-sm font-medium border border-info/40 rounded px-2 py-0.5"
                         >
-                          <Pencil className="w-4 h-4" />
+                          編集
                         </button>
                         <button
                           onClick={() => delItem("c", i.id)}
-                          className="text-danger p-0.5"
-                          aria-label="削除"
+                          className="text-danger text-sm font-medium border border-danger/40 rounded px-2 py-0.5"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          削除
                         </button>
                       </>
                     )}
