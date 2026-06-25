@@ -143,13 +143,19 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
     }
     setSettling(true);
     setMsg(undefined);
-    const r = await apiFetch<{ daicho_count: number }>("/api/settlements", {
-      method: "POST",
-      body: JSON.stringify({ case_id: id, cash_settled: n }),
-    });
+    const r = await apiFetch<{ daicho_count: number; warning?: string | null }>(
+      "/api/settlements",
+      {
+        method: "POST",
+        body: JSON.stringify({ case_id: id, cash_settled: n }),
+      }
+    );
     setSettling(false);
     if (r.ok) {
-      setMsg(`精算確定（台帳${r.data!.daicho_count}件生成）`);
+      setMsg(
+        `精算確定（台帳${r.data!.daicho_count}件生成）` +
+          (r.data!.warning ? `\n⚠ ${r.data!.warning}` : "")
+      );
       load();
     } else setMsg(r.error);
   }
@@ -229,20 +235,29 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
           </select>
         </Field>
 
-        {/* 本人確認 */}
+        {/* 本人確認（買取がある場合のみ古物営業法で必要） */}
         <Card>
           <h2 className="text-base font-semibold mb-2">本人確認</h2>
-          {d.case.verification_method ? (
+          {d.purchase_items.length === 0 ? (
+            <p className="text-sm text-muted">
+              回収のみの案件のため本人確認は不要です（そのまま精算できます）。
+            </p>
+          ) : d.case.verification_method ? (
             <p className="text-sm text-success flex items-center gap-1.5">
               <Check className="w-4 h-4" /> 確認済み（{d.case.verification_method}）
             </p>
           ) : (
-            <Link
-              href={`/cases/${id}/verify`}
-              className="text-info text-sm flex items-center gap-1"
-            >
-              本人確認を実施 <ChevronRight className="w-4 h-4" />
-            </Link>
+            <div className="space-y-1.5">
+              <Link
+                href={`/cases/${id}/verify`}
+                className="text-info text-sm flex items-center gap-1"
+              >
+                本人確認を実施 <ChevronRight className="w-4 h-4" />
+              </Link>
+              <p className="text-xs text-warning">
+                買取があるため、古物台帳の生成には本人確認が必要です（未了でも精算はできます）。
+              </p>
+            </div>
           )}
         </Card>
 
@@ -550,7 +565,7 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
           )}
         </Card>
 
-        {msg && <p className="text-danger text-sm">{msg}</p>}
+        {msg && <p className="text-danger text-sm whitespace-pre-line">{msg}</p>}
       </section>
     </main>
   );

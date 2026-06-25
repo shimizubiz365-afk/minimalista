@@ -58,12 +58,12 @@ export async function POST(req: Request) {
   const cis = await db.from("collection_items").select("work_fee").eq("case_id", case_id);
   if (cis.error) return fail(cis.error.message, 500);
 
-  // 買取があるなら本人確認必須
-  if (purchaseItems.length > 0) {
-    if (!cmeta.verification_method || !cust.occupation || !cust.birth_year) {
-      return fail("本人確認が未完了です（確認方法・職業・生年・身分証）", 400);
-    }
-  }
+  // 本人確認の状態（買取がある場合のみ古物営業法で必要）。
+  // ハードブロックはしない（業務を止めない）。未了なら台帳は作らず警告を返す。
+  const needsVerification = purchaseItems.length > 0;
+  const verificationComplete = Boolean(
+    cmeta.verification_method && cust.occupation && cust.birth_year
+  );
 
   const buy_total = sumAmounts(purchaseItems);
   const work_total = sumWorkFees(cis.data ?? []);
@@ -84,9 +84,9 @@ export async function POST(req: Request) {
     .single();
   if (st.error) return fail(st.error.message, 500);
 
-  // 古物台帳（買取明細がある場合のみ）
+  // 古物台帳（買取明細があり、かつ本人確認が完了している場合のみ生成）
   let daicho_count = 0;
-  if (purchaseItems.length > 0) {
+  if (purchaseItems.length > 0 && verificationComplete) {
     const txDate = new Date().toISOString().slice(0, 10);
     const currentYear = new Date().getFullYear();
     const rows = buildDaichoRows({
@@ -174,5 +174,18 @@ export async function POST(req: Request) {
     }
   }
 
-  return ok({ buy_total, work_total, net_amount, cash_settled, daicho_count, referral_fee_total });
+  const warning =
+    needsVerification && !verificationComplete
+      ? "本人確認が未了のため、古物台帳は未生成です。買取は本人確認の完了が必要です（後から実施してください）。"
+      : null;
+
+  return ok({
+    buy_total,
+    work_total,
+    net_amount,
+    cash_settled,
+    daicho_count,
+    referral_fee_total,
+    warning,
+  });
 }
