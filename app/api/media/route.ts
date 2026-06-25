@@ -1,5 +1,17 @@
 import { ok, fail, requireStaff } from "@/lib/api";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import {
+  driveEnabled,
+  findOrCreateFolder,
+  customerFolderName,
+  uploadFile,
+} from "@/lib/gdrive";
+
+const KIND_LABEL: Record<string, string> = {
+  purchase: "買取",
+  collection: "回収",
+  id_doc: "本人確認",
+};
 
 export async function POST(req: Request) {
   const guard = await requireStaff(req);
@@ -13,13 +25,41 @@ export async function POST(req: Request) {
 
   const db = supabaseAdmin();
   const ext = file.name.split(".").pop() ?? "jpg";
-  const objId = crypto.randomUUID();
-  const storagePath = `${caseId}/${objId}.${ext}`;
   const buf = Buffer.from(await file.arrayBuffer());
-  const up = await db.storage
-    .from("media")
-    .upload(storagePath, buf, { contentType: file.type });
-  if (up.error) return fail(up.error.message, 500);
+
+  let storagePath: string;
+
+  if (driveEnabled()) {
+    // Drive を正本に。顧客フォルダを引いて（無ければ作って）そこへ保存。
+    const { data: c } = await db
+      .from("cases")
+      .select("customer:customers(customer_no,name)")
+      .eq("id", caseId)
+      .maybeSingle();
+    const cust = (c as { customer?: { customer_no: string; name: string } } | null)
+      ?.customer;
+    const folderName = cust
+      ? customerFolderName(cust.customer_no, cust.name)
+      : `case_${caseId}`;
+    try {
+      const folderId = await findOrCreateFolder(folderName);
+      const label = KIND_LABEL[kind] ?? kind;
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[-:T]/g, "");
+      const filename = `${label}_${stamp}.${ext}`;
+      const upl = await uploadFile(folderId, filename, file.type || "image/jpeg", buf);
+      storagePath = upl.webViewLink; // 後から開けるよう Drive の閲覧リンクを保存
+    } catch (e) {
+      return fail("Drive保存に失敗: " + (e as Error).message, 500);
+    }
+  } else {
+    // フォールバック: Supabase Storage
+    const objId = crypto.randomUUID();
+    storagePath = `${caseId}/${objId}.${ext}`;
+    const up = await db.storage
+      .from("media")
+      .upload(storagePath, buf, { contentType: file.type });
+    if (up.error) return fail(up.error.message, 500);
+  }
 
   const { data, error } = await db
     .from("media")
