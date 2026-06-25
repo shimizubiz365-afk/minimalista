@@ -44,6 +44,8 @@ export async function findOrCreateFolder(
   name: string,
   parentId = process.env.GDRIVE_PARENT_FOLDER_ID!
 ): Promise<string> {
+  // 安全装置: 親IDが無いと My Drive 直下に散らばるので必ず止める
+  if (!parentId) throw new Error("GDRIVE_PARENT_FOLDER_ID が未設定です");
   const token = await accessToken();
   const q = `name='${escapeQ(name)}' and mimeType='application/vnd.google-apps.folder' and '${parentId}' in parents and trashed=false`;
   const sr = await fetch(
