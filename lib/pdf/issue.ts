@@ -9,11 +9,15 @@ import {
 const PDF_LABEL: Record<string, string> = {
   purchase_slip: "買取伝票",
   receipt: "領収書",
+  work_order: "作業依頼書",
 };
+
+// doc_type enum は purchase_slip/receipt のみ。それ以外(work_order)は documents 行を作らない。
+const RECORDED_TYPES = new Set(["purchase_slip", "receipt"]);
 
 export async function storePdf(
   caseId: string,
-  type: "purchase_slip" | "receipt",
+  type: "purchase_slip" | "receipt" | "work_order",
   buf: Buffer
 ): Promise<{ document_id: string; signed_url: string }> {
   const db = supabaseAdmin();
@@ -22,12 +26,16 @@ export async function storePdf(
     .from("documents")
     .upload(path, buf, { contentType: "application/pdf" });
   if (up.error) throw new Error(up.error.message);
-  const { data: doc, error } = await db
-    .from("documents")
-    .insert({ case_id: caseId, type, storage_path: path })
-    .select("id")
-    .single();
-  if (error) throw new Error(error.message);
+  let documentId = "";
+  if (RECORDED_TYPES.has(type)) {
+    const { data: doc, error } = await db
+      .from("documents")
+      .insert({ case_id: caseId, type, storage_path: path })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    documentId = doc.id;
+  }
   const signed = await db.storage.from("documents").createSignedUrl(path, 60 * 30);
   if (signed.error) throw new Error(signed.error.message);
 
@@ -58,5 +66,5 @@ export async function storePdf(
     }
   }
 
-  return { document_id: doc.id, signed_url: signed.data.signedUrl };
+  return { document_id: documentId, signed_url: signed.data.signedUrl };
 }

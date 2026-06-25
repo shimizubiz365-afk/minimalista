@@ -88,7 +88,7 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
     if (r.ok) load();
     else setMsg(r.error);
   }
-  async function issue(kind: "purchase-slip" | "receipt") {
+  async function issue(kind: "purchase-slip" | "receipt" | "work-order") {
     setMsg("発行中...");
     const r = await apiFetch<{ signed_url: string }>(`/api/documents/${kind}`, {
       method: "POST",
@@ -370,13 +370,21 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
           <div className="text-right font-semibold mt-2 mb-3">
             作業費合計 {formatYen(workTotal)}
           </div>
-          <Button
-            variant="secondary"
-            onClick={() => issue("receipt")}
-            disabled={d.collection_items.length === 0}
-          >
-            <FileText className="w-4 h-4" /> 領収書PDF発行
-          </Button>
+          <div className="space-y-2">
+            <Button
+              onClick={() => issue("work-order")}
+              disabled={d.collection_items.length === 0}
+            >
+              <FileText className="w-4 h-4" /> 作業依頼書PDF発行
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => issue("receipt")}
+              disabled={d.collection_items.length === 0}
+            >
+              <FileText className="w-4 h-4" /> 領収書PDF発行
+            </Button>
+          </div>
         </Card>
 
         {/* 在庫化 */}
