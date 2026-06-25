@@ -89,7 +89,7 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
     else setMsg(r.error);
   }
   async function issue(
-    kind: "purchase-slip" | "receipt" | "work-order" | "estimate",
+    kind: "purchase-slip" | "receipt" | "work-order" | "estimate" | "invoice",
     extra?: Record<string, unknown>
   ) {
     setIssuing(kind);
@@ -459,6 +459,18 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
             </Button>
             {pdfUrls["receipt"] && (
               <PdfOpen url={pdfUrls["receipt"]} label="領収書を開く" />
+            )}
+            <Button
+              variant="secondary"
+              onClick={() => issue("invoice", { tax_mode: taxMode })}
+              loading={issuing === "invoice"}
+              loadingText="発行中..."
+              disabled={d.collection_items.length === 0}
+            >
+              <FileText className="w-4 h-4" /> 請求書PDF発行
+            </Button>
+            {pdfUrls["invoice"] && (
+              <PdfOpen url={pdfUrls["invoice"]} label="請求書を開く" />
             )}
           </div>
         </Card>

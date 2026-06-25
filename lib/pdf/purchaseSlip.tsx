@@ -55,10 +55,8 @@ export function PurchaseSlip(props: {
         <Text style={s.total}>買取合計: {formatYen(props.total)}</Text>
         <View style={s.company}>
           <Text>{company.name}</Text>
-          <Text>古物商許可番号: {company.kobutsuLicense}</Text>
-          <Text>
-            {company.address}　TEL {company.tel}
-          </Text>
+          <Text>{company.licenseLine}</Text>
+          <Text>{company.addressLine}</Text>
         </View>
       </Page>
     </Document>
