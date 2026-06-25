@@ -46,7 +46,7 @@ export default function CollectionInput({ params }: { params: Promise<{ id: stri
 
   return (
     <main>
-      <AppHeader title="回収入力" backHref={`/cases/${id}`} />
+      <AppHeader title="作業依頼書 入力" backHref={`/cases/${id}`} />
       <section className="px-5 pt-6 space-y-4">
         <Field label="回収品目" required>
           <input

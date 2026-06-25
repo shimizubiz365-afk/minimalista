@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     .order("created_at");
   if (items.error) return fail(items.error.message, 500);
   const list = items.data ?? [];
-  if (list.length === 0) return fail("回収明細がありません", 400);
+  if (list.length === 0) return fail("作業依頼書の明細がありません", 400);
   const total = sumWorkFees(list);
   const cust = (c.data as unknown as { customer: Cust }).customer;
   try {

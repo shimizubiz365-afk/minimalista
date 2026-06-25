@@ -1,7 +1,17 @@
 "use client";
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
-import { Plus, ChevronRight, Check, FileText, ExternalLink, CalendarCheck } from "lucide-react";
+import {
+  Plus,
+  ChevronRight,
+  Check,
+  FileText,
+  ExternalLink,
+  CalendarCheck,
+  Pencil,
+  Trash2,
+  X,
+} from "lucide-react";
 import { apiFetch } from "@/lib/liffClient";
 import { formatYen } from "@/lib/money";
 import { label, CASE_STATUS_LABELS } from "@/lib/labels";
@@ -34,6 +44,14 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
   const [visitAt, setVisitAt] = useState("");
   const [memo, setMemo] = useState("");
   const [saving, setSaving] = useState(false);
+  const [edit, setEdit] = useState<{
+    kind: "p" | "c";
+    id: string;
+    a: string;
+    b: string;
+  } | null>(null);
+  const editCls =
+    "border border-border rounded-md px-2 h-9 bg-surface text-fg focus:outline-none focus:border-primary";
 
   async function load() {
     const r = await apiFetch<Detail>(`/api/cases/${id}`);
@@ -81,6 +99,35 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
       setMsg(undefined);
     } else setMsg(r.error);
   }
+  async function saveItem() {
+    if (!edit) return;
+    const path =
+      edit.kind === "p"
+        ? `/api/purchase-items/${edit.id}`
+        : `/api/collection-items/${edit.id}`;
+    const fee = parseInt(edit.b, 10);
+    if (isNaN(fee)) {
+      setMsg("金額を数値で入力してください");
+      return;
+    }
+    const body =
+      edit.kind === "p"
+        ? { name: edit.a, amount: fee }
+        : { item_name: edit.a, work_fee: fee };
+    const r = await apiFetch(path, { method: "PATCH", body: JSON.stringify(body) });
+    if (r.ok) {
+      setEdit(null);
+      load();
+    } else setMsg(r.error);
+  }
+  async function delItem(kind: "p" | "c", id: string) {
+    if (!confirm("この明細を削除しますか？")) return;
+    const path =
+      kind === "p" ? `/api/purchase-items/${id}` : `/api/collection-items/${id}`;
+    const r = await apiFetch(path, { method: "DELETE" });
+    if (r.ok) load();
+    else setMsg(r.error);
+  }
   async function settle() {
     const n = parseInt(cash, 10);
     if (isNaN(n)) {
@@ -109,6 +156,7 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
 
   const buyTotal = d.purchase_items.reduce((a, i) => a + i.amount, 0);
   const workTotal = d.collection_items.reduce((a, i) => a + i.work_fee, 0);
+  const editable = d.case.status !== "closed";
 
   return (
     <main>
@@ -195,12 +243,54 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
             </Link>
           </div>
           {d.purchase_items.map((i) => (
-            <div
-              key={i.id}
-              className="flex justify-between py-2 border-b border-border text-sm"
-            >
-              <span>{i.name}</span>
-              <span>{formatYen(i.amount)}</span>
+            <div key={i.id} className="py-2 border-b border-border text-sm">
+              {edit?.kind === "p" && edit.id === i.id ? (
+                <div className="flex gap-1.5 items-center">
+                  <input
+                    className={`${editCls} flex-1 min-w-0`}
+                    value={edit.a}
+                    onChange={(e) => setEdit({ ...edit, a: e.target.value })}
+                  />
+                  <input
+                    className={`${editCls} w-24`}
+                    type="number"
+                    inputMode="numeric"
+                    value={edit.b}
+                    onChange={(e) => setEdit({ ...edit, b: e.target.value })}
+                  />
+                  <button onClick={saveItem} className="text-primary p-1" aria-label="保存">
+                    <Check className="w-5 h-5" />
+                  </button>
+                  <button onClick={() => setEdit(null)} className="text-subtle p-1" aria-label="取消">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex justify-between items-center">
+                  <span className="min-w-0 truncate">{i.name}</span>
+                  <div className="flex items-center gap-2.5 shrink-0">
+                    <span>{formatYen(i.amount)}</span>
+                    {editable && (
+                      <>
+                        <button
+                          onClick={() => setEdit({ kind: "p", id: i.id, a: i.name, b: String(i.amount) })}
+                          className="text-info p-0.5"
+                          aria-label="編集"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => delItem("p", i.id)}
+                          className="text-danger p-0.5"
+                          aria-label="削除"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           ))}
           <div className="text-right font-semibold mt-2 mb-3">
@@ -215,10 +305,10 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
           </Button>
         </Card>
 
-        {/* 回収明細 */}
+        {/* 作業依頼書（旧:回収明細） */}
         <Card>
           <div className="flex justify-between items-center mb-2">
-            <h2 className="text-base font-semibold">回収明細</h2>
+            <h2 className="text-base font-semibold">作業依頼書</h2>
             <Link
               href={`/cases/${id}/collection`}
               className="text-info text-sm flex items-center gap-0.5"
@@ -227,12 +317,54 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
             </Link>
           </div>
           {d.collection_items.map((i) => (
-            <div
-              key={i.id}
-              className="flex justify-between py-2 border-b border-border text-sm"
-            >
-              <span>{i.item_name}</span>
-              <span>{formatYen(i.work_fee)}</span>
+            <div key={i.id} className="py-2 border-b border-border text-sm">
+              {edit?.kind === "c" && edit.id === i.id ? (
+                <div className="flex gap-1.5 items-center">
+                  <input
+                    className={`${editCls} flex-1 min-w-0`}
+                    value={edit.a}
+                    onChange={(e) => setEdit({ ...edit, a: e.target.value })}
+                  />
+                  <input
+                    className={`${editCls} w-24`}
+                    type="number"
+                    inputMode="numeric"
+                    value={edit.b}
+                    onChange={(e) => setEdit({ ...edit, b: e.target.value })}
+                  />
+                  <button onClick={saveItem} className="text-primary p-1" aria-label="保存">
+                    <Check className="w-5 h-5" />
+                  </button>
+                  <button onClick={() => setEdit(null)} className="text-subtle p-1" aria-label="取消">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex justify-between items-center">
+                  <span className="min-w-0 truncate">{i.item_name}</span>
+                  <div className="flex items-center gap-2.5 shrink-0">
+                    <span>{formatYen(i.work_fee)}</span>
+                    {editable && (
+                      <>
+                        <button
+                          onClick={() => setEdit({ kind: "c", id: i.id, a: i.item_name, b: String(i.work_fee) })}
+                          className="text-info p-0.5"
+                          aria-label="編集"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => delItem("c", i.id)}
+                          className="text-danger p-0.5"
+                          aria-label="削除"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           ))}
           <div className="text-right font-semibold mt-2 mb-3">
