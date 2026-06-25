@@ -44,6 +44,9 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
   const [taxMode, setTaxMode] = useState<TaxMode>("exclusive");
   const [issuing, setIssuing] = useState<string | null>(null);
   const [settling, setSettling] = useState(false);
+  const [dueDate, setDueDate] = useState(
+    () => new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10)
+  );
   const [edit, setEdit] = useState<{
     kind: "p" | "c";
     id: string;
@@ -460,9 +463,18 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
             {pdfUrls["receipt"] && (
               <PdfOpen url={pdfUrls["receipt"]} label="領収書を開く" />
             )}
+            <div className="pt-1">
+              <label className="text-xs text-muted block mb-1">請求書の支払期限</label>
+              <input
+                type="date"
+                className={inputClass}
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+              />
+            </div>
             <Button
               variant="secondary"
-              onClick={() => issue("invoice", { tax_mode: taxMode })}
+              onClick={() => issue("invoice", { tax_mode: taxMode, due_date: dueDate })}
               loading={issuing === "invoice"}
               loadingText="発行中..."
               disabled={d.collection_items.length === 0}

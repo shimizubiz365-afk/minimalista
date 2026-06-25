@@ -10,7 +10,7 @@ type Cust = { name: string; address: string | null; customer_no: string };
 export async function POST(req: Request) {
   const guard = await requireStaff(req);
   if (guard instanceof Response) return guard;
-  const { case_id, tax_mode } = await req.json();
+  const { case_id, tax_mode, due_date } = await req.json();
   if (!case_id) return fail("case_id は必須", 400);
   const mode: TaxMode = tax_mode === "inclusive" ? "inclusive" : "exclusive";
   const db = supabaseAdmin();
@@ -32,7 +32,10 @@ export async function POST(req: Request) {
   const cust = (c.data as unknown as { customer: Cust }).customer;
 
   const today = new Date();
-  const due = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
+  const dueDate =
+    typeof due_date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(due_date)
+      ? due_date
+      : new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   try {
     const buf = await renderToBuffer(
       Invoice({
@@ -41,7 +44,7 @@ export async function POST(req: Request) {
         tax,
         taxMode: mode,
         date: today.toISOString().slice(0, 10),
-        dueDate: due.toISOString().slice(0, 10),
+        dueDate,
         staffName: guard.staff.name,
       })
     );
