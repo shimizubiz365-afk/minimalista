@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { sumAmounts, sumWorkFees, netAmount } from "@/lib/money";
 import { buildDaichoRows } from "@/lib/settlement";
 import { computeReferralFee } from "@/lib/fee";
+import { sheetsEnabled, appendSalesRow } from "@/lib/gsheets";
 
 export async function POST(req: Request) {
   const guard = await requireStaff(req);
@@ -24,7 +25,7 @@ export async function POST(req: Request) {
   const c = await db
     .from("cases")
     .select(
-      "id, verification_method, id_media_id, referrer_ambassador_id, customer:customers(name,address,occupation,birth_year)"
+      "id, verification_method, id_media_id, referrer_ambassador_id, customer:customers(name,address,occupation,birth_year,customer_no,phone)"
     )
     .eq("id", case_id)
     .maybeSingle();
@@ -36,6 +37,8 @@ export async function POST(req: Request) {
         address: string | null;
         occupation: string | null;
         birth_year: number | null;
+        customer_no: string | null;
+        phone: string | null;
       };
     }
   ).customer;
@@ -149,6 +152,27 @@ export async function POST(req: Request) {
     .update({ status: "closed", closed_at: new Date().toISOString() })
     .eq("id", case_id);
   if (cl.error) return fail(cl.error.message, 500);
+
+  // GENBA 管理表「売上」タブへ1行追記（任意・失敗しても精算は成立）
+  if (sheetsEnabled()) {
+    try {
+      await appendSalesRow({
+        date: new Date().toISOString().slice(0, 10),
+        caseId: case_id,
+        customerNo: cust.customer_no ?? "",
+        customerName: cust.name,
+        phone: cust.phone ?? "",
+        buyTotal: buy_total,
+        workTotal: work_total,
+        net: net_amount,
+        cashSettled: cash_settled,
+        referralFee: referral_fee_total,
+        status: "精算済み",
+      });
+    } catch {
+      // シート連携は任意。エラーは無視。
+    }
+  }
 
   return ok({ buy_total, work_total, net_amount, cash_settled, daicho_count, referral_fee_total });
 }

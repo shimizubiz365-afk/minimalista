@@ -3,7 +3,7 @@
 
 let cachedToken: { token: string; exp: number } | null = null;
 
-async function accessToken(): Promise<string> {
+export async function accessToken(): Promise<string> {
   if (cachedToken && cachedToken.exp > Date.now() + 30_000) return cachedToken.token;
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
