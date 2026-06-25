@@ -17,6 +17,7 @@ export default function VerifyPage({ params }: { params: Promise<{ id: string }>
   const [birthYear, setBirthYear] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [msg, setMsg] = useState<string>();
+  const [saving, setSaving] = useState(false);
 
   async function save() {
     const by = parseInt(birthYear, 10);
@@ -24,31 +25,36 @@ export default function VerifyPage({ params }: { params: Promise<{ id: string }>
       setMsg("職業と生年（西暦）は必須");
       return;
     }
-    setMsg("保存中...");
-    let idMediaId: string | undefined;
-    if (file) {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("case_id", id);
-      fd.append("kind", "id_doc");
-      const m = await apiFetch<{ id: string }>("/api/media", { method: "POST", body: fd });
-      if (!m.ok) {
-        setMsg("身分証写真の保存に失敗: " + m.error);
-        return;
+    setMsg(undefined);
+    setSaving(true);
+    try {
+      let idMediaId: string | undefined;
+      if (file) {
+        const fd = new FormData();
+        fd.append("file", file);
+        fd.append("case_id", id);
+        fd.append("kind", "id_doc");
+        const m = await apiFetch<{ id: string }>("/api/media", { method: "POST", body: fd });
+        if (!m.ok) {
+          setMsg("身分証写真の保存に失敗: " + m.error);
+          return;
+        }
+        idMediaId = m.data!.id;
       }
-      idMediaId = m.data!.id;
+      const r = await apiFetch(`/api/cases/${id}/verify`, {
+        method: "POST",
+        body: JSON.stringify({
+          verification_method: method,
+          occupation,
+          birth_year: by,
+          id_media_id: idMediaId,
+        }),
+      });
+      if (r.ok) router.push(`/cases/${id}`);
+      else setMsg(r.error);
+    } finally {
+      setSaving(false);
     }
-    const r = await apiFetch(`/api/cases/${id}/verify`, {
-      method: "POST",
-      body: JSON.stringify({
-        verification_method: method,
-        occupation,
-        birth_year: by,
-        id_media_id: idMediaId,
-      }),
-    });
-    if (r.ok) router.push(`/cases/${id}`);
-    else setMsg(r.error);
   }
 
   return (
@@ -102,7 +108,7 @@ export default function VerifyPage({ params }: { params: Promise<{ id: string }>
           </label>
         </Field>
         {msg && <p className="text-danger text-sm">{msg}</p>}
-        <Button onClick={save} size="lg">
+        <Button onClick={save} size="lg" loading={saving} loadingText="保存中...">
           本人確認を保存
         </Button>
       </section>

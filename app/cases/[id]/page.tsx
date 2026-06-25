@@ -42,6 +42,8 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
   const [memo, setMemo] = useState("");
   const [saving, setSaving] = useState(false);
   const [taxMode, setTaxMode] = useState<TaxMode>("exclusive");
+  const [issuing, setIssuing] = useState<string | null>(null);
+  const [settling, setSettling] = useState(false);
   const [edit, setEdit] = useState<{
     kind: "p" | "c";
     id: string;
@@ -90,14 +92,15 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
     kind: "purchase-slip" | "receipt" | "work-order" | "estimate",
     extra?: Record<string, unknown>
   ) {
-    setMsg("発行中...");
+    setIssuing(kind);
+    setMsg(undefined);
     const r = await apiFetch<{ signed_url: string }>(`/api/documents/${kind}`, {
       method: "POST",
       body: JSON.stringify({ case_id: id, ...extra }),
     });
+    setIssuing(null);
     if (r.ok) {
       setPdfUrls((u) => ({ ...u, [kind]: r.data!.signed_url }));
-      setMsg(undefined);
     } else setMsg(r.error);
   }
   async function saveItem() {
@@ -135,11 +138,13 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
       setMsg("受領/支払現金を入力してください");
       return;
     }
-    setMsg("精算確定中...");
+    setSettling(true);
+    setMsg(undefined);
     const r = await apiFetch<{ daicho_count: number }>("/api/settlements", {
       method: "POST",
       body: JSON.stringify({ case_id: id, cash_settled: n }),
     });
+    setSettling(false);
     if (r.ok) {
       setMsg(`精算確定（台帳${r.data!.daicho_count}件生成）`);
       load();
@@ -197,7 +202,12 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
               placeholder="例: 6/27 14時で確定。マンション3F、エレベーター無し"
             />
           </Field>
-          <Button onClick={saveSchedule} disabled={saving} className="mt-3">
+          <Button
+            onClick={saveSchedule}
+            loading={saving}
+            loadingText="保存中..."
+            className="mt-3"
+          >
             <CalendarCheck className="w-4 h-4" /> {visitAt ? "予約を確定する" : "保存する"}
           </Button>
         </Card>
@@ -306,6 +316,8 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
             <Button
               variant="secondary"
               onClick={() => issue("purchase-slip")}
+              loading={issuing === "purchase-slip"}
+              loadingText="発行中..."
               disabled={d.purchase_items.length === 0}
             >
               <FileText className="w-4 h-4" /> 買取伝票PDF発行
@@ -427,6 +439,8 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
           <div className="space-y-2">
             <Button
               onClick={() => issue("work-order", { tax_mode: taxMode })}
+              loading={issuing === "work-order"}
+              loadingText="発行中..."
               disabled={d.collection_items.length === 0}
             >
               <FileText className="w-4 h-4" /> 作業依頼書PDF発行
@@ -437,6 +451,8 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
             <Button
               variant="secondary"
               onClick={() => issue("receipt", { tax_mode: taxMode })}
+              loading={issuing === "receipt"}
+              loadingText="発行中..."
               disabled={d.collection_items.length === 0}
             >
               <FileText className="w-4 h-4" /> 領収書PDF発行
@@ -456,6 +472,8 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
           <div className="space-y-2">
             <Button
               onClick={() => issue("estimate")}
+              loading={issuing === "estimate"}
+              loadingText="発行中..."
               disabled={
                 d.purchase_items.length === 0 && d.collection_items.length === 0
               }
@@ -495,7 +513,13 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
                   placeholder={`差引: ${formatYen(buyTotal - workTotal)}`}
                 />
               </Field>
-              <Button variant="danger" onClick={settle} className="mt-3">
+              <Button
+                variant="danger"
+                onClick={settle}
+                loading={settling}
+                loadingText="精算中..."
+                className="mt-3"
+              >
                 精算を確定する（台帳生成・クローズ）
               </Button>
             </>

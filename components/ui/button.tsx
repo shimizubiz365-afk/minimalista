@@ -1,4 +1,5 @@
 import { cn } from "@/lib/cn";
+import { Spinner } from "./spinner";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
 type Size = "md" | "lg";
@@ -18,6 +19,8 @@ const SIZES: Record<Size, string> = {
 type Props = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: Variant;
   size?: Size;
+  loading?: boolean;
+  loadingText?: string;
 };
 
 export function Button({
@@ -25,6 +28,9 @@ export function Button({
   size = "md",
   className,
   children,
+  loading = false,
+  loadingText,
+  disabled,
   ...rest
 }: Props) {
   return (
@@ -35,9 +41,18 @@ export function Button({
         SIZES[size],
         className
       )}
+      disabled={disabled || loading}
+      aria-busy={loading}
       {...rest}
     >
-      {children}
+      {loading ? (
+        <>
+          <Spinner className="w-5 h-5" />
+          {loadingText ?? "処理中..."}
+        </>
+      ) : (
+        children
+      )}
     </button>
   );
 }

@@ -13,6 +13,7 @@ export default function CollectionInput({ params }: { params: Promise<{ id: stri
   const [form, setForm] = useState({ item_name: "", work_fee: "" });
   const [file, setFile] = useState<File | null>(null);
   const [msg, setMsg] = useState<string>();
+  const [saving, setSaving] = useState(false);
 
   async function save() {
     const work_fee = parseInt(form.work_fee, 10);
@@ -20,28 +21,33 @@ export default function CollectionInput({ params }: { params: Promise<{ id: stri
       setMsg("品目と作業費は必須");
       return;
     }
-    setMsg("保存中...");
-    const r = await apiFetch<{ id: string }>("/api/collection-items", {
-      method: "POST",
-      body: JSON.stringify({ case_id: id, item_name: form.item_name, work_fee }),
-    });
-    if (!r.ok) {
-      setMsg(r.error);
-      return;
-    }
-    if (file) {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("case_id", id);
-      fd.append("kind", "collection");
-      fd.append("collection_item_id", r.data!.id);
-      const m = await apiFetch("/api/media", { method: "POST", body: fd });
-      if (!m.ok) {
-        setMsg("明細は保存できたが写真の保存に失敗: " + m.error);
+    setMsg(undefined);
+    setSaving(true);
+    try {
+      const r = await apiFetch<{ id: string }>("/api/collection-items", {
+        method: "POST",
+        body: JSON.stringify({ case_id: id, item_name: form.item_name, work_fee }),
+      });
+      if (!r.ok) {
+        setMsg(r.error);
         return;
       }
+      if (file) {
+        const fd = new FormData();
+        fd.append("file", file);
+        fd.append("case_id", id);
+        fd.append("kind", "collection");
+        fd.append("collection_item_id", r.data!.id);
+        const m = await apiFetch("/api/media", { method: "POST", body: fd });
+        if (!m.ok) {
+          setMsg("明細は保存できたが写真の保存に失敗: " + m.error);
+          return;
+        }
+      }
+      router.push(`/cases/${id}`);
+    } finally {
+      setSaving(false);
     }
-    router.push(`/cases/${id}`);
   }
 
   return (
@@ -82,7 +88,7 @@ export default function CollectionInput({ params }: { params: Promise<{ id: stri
           </label>
         </Field>
         {msg && <p className="text-danger text-sm">{msg}</p>}
-        <Button onClick={save} size="lg">
+        <Button onClick={save} size="lg" loading={saving} loadingText="保存中...">
           保存
         </Button>
       </section>

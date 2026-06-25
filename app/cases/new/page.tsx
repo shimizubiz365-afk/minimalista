@@ -32,6 +32,7 @@ export default function NewCasePage() {
     source: "phone",
   });
   const [err, setErr] = useState<string>();
+  const [saving, setSaving] = useState(false);
   const [ambassadors, setAmbassadors] = useState<{ id: string; name: string }[]>([]);
   const [ambId, setAmbId] = useState("");
 
@@ -61,12 +62,18 @@ export default function NewCasePage() {
       source: form.source,
       referrer_ambassador_id: form.source === "referral" ? ambId || null : null,
     };
-    const r = await apiFetch<{ id: string }>("/api/cases", {
-      method: "POST",
-      body: JSON.stringify(body),
-    });
-    if (r.ok) router.push(`/cases/${r.data!.id}`);
-    else setErr(r.error);
+    setErr(undefined);
+    setSaving(true);
+    try {
+      const r = await apiFetch<{ id: string }>("/api/cases", {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+      if (r.ok) router.push(`/cases/${r.data!.id}`);
+      else setErr(r.error);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -196,7 +203,7 @@ export default function NewCasePage() {
           </Field>
         )}
         {err && <p className="text-danger text-sm">{err}</p>}
-        <Button onClick={submit} size="lg">
+        <Button onClick={submit} size="lg" loading={saving} loadingText="登録中...">
           登録して案件を開く <ArrowRight className="w-4 h-4" />
         </Button>
       </section>

@@ -13,6 +13,7 @@ export default function PurchaseInput({ params }: { params: Promise<{ id: string
   const [form, setForm] = useState({ name: "", brand: "", model: "", condition: "", amount: "" });
   const [file, setFile] = useState<File | null>(null);
   const [msg, setMsg] = useState<string>();
+  const [saving, setSaving] = useState(false);
 
   async function save() {
     const amount = parseInt(form.amount, 10);
@@ -20,35 +21,40 @@ export default function PurchaseInput({ params }: { params: Promise<{ id: string
       setMsg("品名と金額は必須");
       return;
     }
-    setMsg("保存中...");
-    const r = await apiFetch<{ id: string }>("/api/purchase-items", {
-      method: "POST",
-      body: JSON.stringify({
-        case_id: id,
-        name: form.name,
-        brand: form.brand,
-        model: form.model,
-        condition: form.condition,
-        amount,
-      }),
-    });
-    if (!r.ok) {
-      setMsg(r.error);
-      return;
-    }
-    if (file) {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("case_id", id);
-      fd.append("kind", "purchase");
-      fd.append("purchase_item_id", r.data!.id);
-      const m = await apiFetch("/api/media", { method: "POST", body: fd });
-      if (!m.ok) {
-        setMsg("明細は保存できたが写真の保存に失敗: " + m.error);
+    setMsg(undefined);
+    setSaving(true);
+    try {
+      const r = await apiFetch<{ id: string }>("/api/purchase-items", {
+        method: "POST",
+        body: JSON.stringify({
+          case_id: id,
+          name: form.name,
+          brand: form.brand,
+          model: form.model,
+          condition: form.condition,
+          amount,
+        }),
+      });
+      if (!r.ok) {
+        setMsg(r.error);
         return;
       }
+      if (file) {
+        const fd = new FormData();
+        fd.append("file", file);
+        fd.append("case_id", id);
+        fd.append("kind", "purchase");
+        fd.append("purchase_item_id", r.data!.id);
+        const m = await apiFetch("/api/media", { method: "POST", body: fd });
+        if (!m.ok) {
+          setMsg("明細は保存できたが写真の保存に失敗: " + m.error);
+          return;
+        }
+      }
+      router.push(`/cases/${id}`);
+    } finally {
+      setSaving(false);
     }
-    router.push(`/cases/${id}`);
   }
 
   return (
@@ -113,7 +119,7 @@ export default function PurchaseInput({ params }: { params: Promise<{ id: string
           </label>
         </Field>
         {msg && <p className="text-danger text-sm">{msg}</p>}
-        <Button onClick={save} size="lg">
+        <Button onClick={save} size="lg" loading={saving} loadingText="保存中...">
           保存
         </Button>
       </section>

@@ -20,6 +20,7 @@ export default function ProductizePage({ params }: { params: Promise<{ id: strin
   const [cost, setCost] = useState("");
   const [sel, setSel] = useState<string[]>([]);
   const [msg, setMsg] = useState<string>();
+  const [saving, setSaving] = useState(false);
 
   async function load() {
     const d = await apiFetch<Detail>(`/api/cases/${id}`);
@@ -49,17 +50,22 @@ export default function ProductizePage({ params }: { params: Promise<{ id: strin
       setMsg("源泉の買取明細を選んでください");
       return;
     }
-    const r = await apiFetch<{ id: string }>("/api/products", {
-      method: "POST",
-      body: JSON.stringify({ case_id: id, name, cost: c, source_purchase_item_ids: sel }),
-    });
-    if (r.ok) {
-      setName("");
-      setCost("");
-      setSel([]);
-      setMsg(undefined);
-      load();
-    } else setMsg(r.error);
+    setMsg(undefined);
+    setSaving(true);
+    try {
+      const r = await apiFetch<{ id: string }>("/api/products", {
+        method: "POST",
+        body: JSON.stringify({ case_id: id, name, cost: c, source_purchase_item_ids: sel }),
+      });
+      if (r.ok) {
+        setName("");
+        setCost("");
+        setSel([]);
+        load();
+      } else setMsg(r.error);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -134,7 +140,9 @@ export default function ProductizePage({ params }: { params: Promise<{ id: strin
               />
             </Field>
             {msg && <p className="text-danger text-sm">{msg}</p>}
-            <Button onClick={create}>この商品を作る</Button>
+            <Button onClick={create} loading={saving} loadingText="作成中...">
+              この商品を作る
+            </Button>
           </div>
         </Card>
 
