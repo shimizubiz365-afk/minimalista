@@ -63,3 +63,32 @@ export async function appendSalesRow(r: SalesRow): Promise<void> {
     r.status,
   ]);
 }
+
+// 指定タブの全行を読む（[0]はヘッダ行）
+export async function readSheet(tab: string): Promise<string[][]> {
+  const token = await accessToken();
+  const sid = process.env.GENBA_SHEET_ID!;
+  const res = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${sid}/values/${encodeURIComponent(tab)}`,
+    { headers: { Authorization: "Bearer " + token } }
+  );
+  if (!res.ok) throw new Error("Sheets読取に失敗: " + (await res.text()));
+  const j = await res.json();
+  return (j.values ?? []) as string[][];
+}
+
+// 指定範囲（例 "予約リード!H2:I2"）のセルを更新
+export async function updateCells(rangeA1: string, values: Cell[][]): Promise<void> {
+  const token = await accessToken();
+  const sid = process.env.GENBA_SHEET_ID!;
+  const res = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${sid}/values/` +
+      `${encodeURIComponent(rangeA1)}?valueInputOption=RAW`,
+    {
+      method: "PUT",
+      headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+      body: JSON.stringify({ values }),
+    }
+  );
+  if (!res.ok) throw new Error("Sheets更新に失敗: " + (await res.text()));
+}

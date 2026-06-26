@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import liff from "@line/liff";
 import Link from "next/link";
-import { ArrowRight, Phone, ChevronRight } from "lucide-react";
+import { ArrowRight, Phone, ChevronRight, Download } from "lucide-react";
 import { apiFetch } from "@/lib/liffClient";
 import { AppHeader } from "@/components/app-header";
 import { Card } from "@/components/ui/card";
@@ -49,16 +49,40 @@ export default function Home() {
   const [rows, setRows] = useState<CaseRow[]>([]);
   const [name, setName] = useState("");
   const [err, setErr] = useState<string>();
+  const [importing, setImporting] = useState(false);
+  const [importMsg, setImportMsg] = useState<string>();
+
+  async function load() {
+    const r = await apiFetch<CaseRow[]>("/api/cases");
+    if (r.ok) setRows(r.data ?? []);
+    else setErr(r.error);
+  }
 
   useEffect(() => {
-    apiFetch<CaseRow[]>("/api/cases").then((r) =>
-      r.ok ? setRows(r.data ?? []) : setErr(r.error)
-    );
+    load();
     liff
       .getProfile()
       .then((p) => setName(p.displayName ?? ""))
       .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function importLeads() {
+    setImporting(true);
+    setImportMsg(undefined);
+    const r = await apiFetch<{ imported: number; errors: string[] }>(
+      "/api/leads/import",
+      { method: "POST" }
+    );
+    setImporting(false);
+    if (r.ok) {
+      const n = r.data!.imported;
+      setImportMsg(
+        n > 0 ? `${n}件のリードを取り込みました` : "新しいリードはありませんでした"
+      );
+      load();
+    } else setImportMsg(r.error);
+  }
 
   const tk = todayKey();
   const todays = rows.filter((c) => c.visit_at?.startsWith(tk));
@@ -150,6 +174,21 @@ export default function Home() {
             </Card>
           );
         })}
+      </section>
+
+      {/* リード取込（予約リードシートから） */}
+      <section className="px-5 pt-2 pb-2">
+        <button
+          onClick={importLeads}
+          disabled={importing}
+          className="w-full h-11 rounded-md border border-border bg-surface text-fg text-sm font-medium flex items-center justify-center gap-2 active:bg-border/40 disabled:opacity-50"
+        >
+          <Download className="w-4 h-4" />
+          {importing ? "取込中..." : "予約リードを取り込む"}
+        </button>
+        {importMsg && (
+          <p className="text-xs text-muted mt-2 text-center">{importMsg}</p>
+        )}
       </section>
 
       {/* 要対応 */}
