@@ -26,6 +26,23 @@ describe("sumWorkFees", () => {
     expect(sumWorkFees([{ work_fee: 3000 }, { work_fee: 5000 }])).toBe(8000));
 });
 
+describe("精算の差引（PDFと一致させる）", () => {
+  it("外税: 作業費は+10%して差し引く", () => {
+    const work = taxBreakdown(50000, "exclusive");
+    expect(work.total).toBe(55000);
+    expect(netAmount(80000, work.total)).toBe(25000);
+  });
+  it("内税: 入力額がそのまま税込", () => {
+    const work = taxBreakdown(55000, "inclusive");
+    expect(work.total).toBe(55000);
+    expect(netAmount(80000, work.total)).toBe(25000);
+  });
+  it("買取より作業費が多ければ差引はマイナス（お客様から受領）", () => {
+    const work = taxBreakdown(30000, "exclusive");
+    expect(netAmount(10000, work.total)).toBe(-23000);
+  });
+});
+
 describe("formatYen", () => {
   it("3桁区切り+円", () => expect(formatYen(1234567)).toBe("¥1,234,567"));
   it("0", () => expect(formatYen(0)).toBe("¥0"));

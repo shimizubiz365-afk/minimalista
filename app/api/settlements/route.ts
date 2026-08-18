@@ -1,14 +1,16 @@
 import { ok, fail, requireStaff } from "@/lib/api";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { sumAmounts, sumWorkFees, netAmount } from "@/lib/money";
+import { sumAmounts, sumWorkFees, netAmount, taxBreakdown, type TaxMode } from "@/lib/money";
 import { computeReferralFee } from "@/lib/fee";
 import { sheetsEnabled, appendSalesRow } from "@/lib/gsheets";
 
 export async function POST(req: Request) {
   const guard = await requireStaff(req);
   if (guard instanceof Response) return guard;
-  const { case_id, cash_settled } = await req.json();
+  const { case_id, cash_settled, tax_mode } = await req.json();
   if (!case_id) return fail("case_id は必須", 400);
+  // PDF(作業依頼書・領収書・請求書)と同じ税区分で計算する。既定は外税。
+  const mode: TaxMode = tax_mode === "inclusive" ? "inclusive" : "exclusive";
   const db = supabaseAdmin();
 
   // 二重確定防止
@@ -50,7 +52,9 @@ export async function POST(req: Request) {
   if (cis.error) return fail(cis.error.message, 500);
 
   const buy_total = sumAmounts(purchaseItems);
-  const work_total = sumWorkFees(cis.data ?? []);
+  // 作業費は「お客様が実際に払う額」＝税込で記録する。外税なら+10%、内税なら入力額そのまま。
+  // ここを素の合計にするとPDFと売上シートが消費税分ズレる。
+  const work_total = taxBreakdown(sumWorkFees(cis.data ?? []), mode).total;
   const net_amount = netAmount(buy_total, work_total);
   // 受け渡しの現金は「買取合計 − 作業費合計」で確定する。
   // (cash_settled を明示指定した場合だけそれを使う＝旧クライアント互換)
@@ -157,6 +161,7 @@ export async function POST(req: Request) {
     work_total,
     net_amount,
     cash_settled: cash,
+    tax_mode: mode,
     referral_fee_total,
   });
 }

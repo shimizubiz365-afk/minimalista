@@ -93,3 +93,28 @@ export function useDraft<T>(
   }
   return { restored, discard, clear };
 }
+
+// 選択の記憶（下書きとは別。案件ごとの税区分など「次も同じはず」の選択を端末に覚えさせる）。
+// 90日で期限切れ。復元しても帯は出さない（入力内容ではなく設定なので事故にならない）。
+const CHOICE_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000;
+
+export function useStickyChoice<T>(
+  key: string | null,
+  initial: T
+): [T, (v: T) => void] {
+  const [value, setValue] = useState<T>(initial);
+  const loaded = useRef(false);
+
+  useEffect(() => {
+    if (!key || loaded.current) return;
+    loaded.current = true;
+    const v = parseDraft<T>(read(key), Date.now(), CHOICE_MAX_AGE_MS);
+    if (v !== null) setValue(v);
+  }, [key]);
+
+  function set(v: T) {
+    setValue(v);
+    if (key) write(key, serializeDraft(v, Date.now()));
+  }
+  return [value, set];
+}

@@ -93,7 +93,7 @@ export function Estimate(props: {
               </View>
             ))}
             <View style={s.subRow}>
-              <Text style={s.subLabel}>作業費 合計</Text>
+              <Text style={s.subLabel}>作業費 合計（税込）</Text>
               <Text style={s.subVal}>{formatYen(props.workTotal)}</Text>
             </View>
           </>

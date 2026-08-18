@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { apiFetch } from "@/lib/liffClient";
 import { formatYen, netAmount, taxBreakdown, type TaxMode } from "@/lib/money";
+import { useStickyChoice } from "@/lib/draft";
 import { label, CASE_STATUS_LABELS, CASE_STATUS_FLOW } from "@/lib/labels";
 import { AppHeader } from "@/components/app-header";
 import { Card } from "@/components/ui/card";
@@ -36,7 +37,8 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
   const [d, setD] = useState<Detail>();
   const [msg, setMsg] = useState<string>();
   const [pdfUrls, setPdfUrls] = useState<Record<string, string>>({});
-  const [taxMode, setTaxMode] = useState<TaxMode>("exclusive");
+  // 税区分はこの案件の設定として端末に記憶する（PDF・精算・売上シートで同じ値を使う）
+  const [taxMode, setTaxMode] = useStickyChoice<TaxMode>(`tax:${id}`, "exclusive");
   const [issuing, setIssuing] = useState<string | null>(null);
   const [settling, setSettling] = useState(false);
   const [dueDate, setDueDate] = useState(
@@ -120,7 +122,7 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
     setMsg(undefined);
     const r = await apiFetch<{ net_amount: number }>("/api/settlements", {
       method: "POST",
-      body: JSON.stringify({ case_id: id }),
+      body: JSON.stringify({ case_id: id, tax_mode: taxMode }),
     });
     setSettling(false);
     if (r.ok) {
@@ -141,7 +143,8 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
   const buyTotal = d.purchase_items.reduce((a, i) => a + i.amount, 0);
   const workTotal = d.collection_items.reduce((a, i) => a + i.work_fee, 0);
   const workTax = taxBreakdown(workTotal, taxMode);
-  const net = netAmount(buyTotal, workTotal);
+  // 精算は作業費「税込」で計算する（PDFに書かれた金額＝お客様が払う額と一致させる）
+  const net = netAmount(buyTotal, workTax.total);
   const editable = d.case.status !== "closed";
 
   return (
@@ -464,7 +467,7 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
           </p>
           <div className="space-y-2">
             <Button
-              onClick={() => issue("estimate")}
+              onClick={() => issue("estimate", { tax_mode: taxMode })}
               loading={issuing === "estimate"}
               loadingText="発行中..."
               disabled={
@@ -494,13 +497,18 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
                   <span>{formatYen(buyTotal)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted">作業費合計</span>
-                  <span>{formatYen(-workTotal)}</span>
+                  <span className="text-muted">
+                    作業費合計（税込・{taxMode === "exclusive" ? "外税" : "内税"}）
+                  </span>
+                  <span>{formatYen(-workTax.total)}</span>
                 </div>
                 <div className="flex justify-between pt-1 border-t border-border font-semibold text-base">
                   <span>差引</span>
                   <span>{formatYen(Math.abs(net))}</span>
                 </div>
+                <p className="text-xs text-subtle pt-1">
+                  税区分は上の「作業依頼書」で切り替えられます（PDFと同じ金額で計上します）。
+                </p>
                 <p className="text-xs text-muted pt-1">
                   {net > 0
                     ? "お客様へお支払いする金額です。"

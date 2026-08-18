@@ -2,7 +2,7 @@ import { ok, fail, requireStaff } from "@/lib/api";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { renderToBuffer } from "@/lib/pdf/renderToBuffer";
 import { Estimate } from "@/lib/pdf/estimate";
-import { sumAmounts, sumWorkFees, netAmount } from "@/lib/money";
+import { sumAmounts, sumWorkFees, netAmount, taxBreakdown, type TaxMode } from "@/lib/money";
 import { storePdf } from "@/lib/pdf/issue";
 
 type Cust = { name: string; address: string | null; customer_no: string };
@@ -10,8 +10,10 @@ type Cust = { name: string; address: string | null; customer_no: string };
 export async function POST(req: Request) {
   const guard = await requireStaff(req);
   if (guard instanceof Response) return guard;
-  const { case_id } = await req.json();
+  const { case_id, tax_mode } = await req.json();
   if (!case_id) return fail("case_id は必須", 400);
+  // 作業費は税込で載せる（作業依頼書・精算・売上シートと同じ金額にする）
+  const mode: TaxMode = tax_mode === "inclusive" ? "inclusive" : "exclusive";
   const db = supabaseAdmin();
   const c = await db
     .from("cases")
@@ -39,7 +41,7 @@ export async function POST(req: Request) {
     return fail("見積もりの明細がありません", 400);
 
   const buyTotal = sumAmounts(buyItems);
-  const workTotal = sumWorkFees(collectionItems);
+  const workTotal = taxBreakdown(sumWorkFees(collectionItems), mode).total;
   const cust = (c.data as unknown as { customer: Cust }).customer;
   try {
     const buf = await renderToBuffer(
