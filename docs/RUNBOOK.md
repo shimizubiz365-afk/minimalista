@@ -37,15 +37,22 @@ COMPANY_TEL=（電話）
 ```
 ※ `COMPANY_*` は買取伝票・領収書PDFに印字される。未設定なら「未設定」と出る。
 
-## 3. スタッフ登録（初回）
+## 3. スタッフ登録（従業員を増やす）
 
-LINEログインしたユーザーを `staff.line_user_id` に紐付けないと、全APIが 401 になる。
-1. 暫定でスタッフ行を作る（マイグレーションのサンプルで `Shun` を1行投入済み）。
-2. 自分の LINE userId を取得：LIFFアプリを一度開き、ブラウザのコンソール等で `liff.getProfile()` の `userId` を確認（または一時的に画面に表示）。
-3. SQL で紐付け：
-   ```sql
-   update staff set line_user_id = 'Uxxxxxxxx...' where name = 'Shun';
-   ```
+**アプリ内で完結する。SQLは不要**（2026-08-18〜）。
+
+1. 追加したい従業員に **LIFFのURLをLINEで送る**（Endpoint URL と同じ）。
+2. 本人が開くと「はじめての利用登録」画面が出る → **「利用を申請する」**をタップ。
+   - この時点で `staff` 行が `active=false` で作られる。まだ何のAPIも通らない。
+3. 既存スタッフが **設定 → 「承認待ちのスタッフ」** で **承認する** をタップ。
+4. 本人が「承認されたか確認する」を押すと通常画面に入れる。
+5. 表示名（書類の「担当」欄に出る）は **設定 → あなたのアカウント** で本人が変更できる。
+
+※ 承認前は全APIが401なので、URLを知る第三者が申請しても実害は「承認待ちの行が1件増える」だけ。
+※ 一番最初の1人だけはSQLで作る必要がある（承認する人がいないため）:
+```sql
+update staff set line_user_id = 'Uxxxxxxxx...' where name = 'Shun';
+```
 
 ## 4. デプロイ
 
@@ -80,14 +87,17 @@ npm run build    # 本番ビルド
 ### マイグレーション
 - `supabase/migrations/0003_phase2_schema.sql` を適用（customers/cases 列追加 + settlements + kobutsu_daicho）。
 
-### E2E（実機）
-1. 買取明細のある案件で「本人確認を実施」→ 身分証撮影＋確認方法＋職業＋生年を保存。
-2. 本人確認せず「精算を確定」→ **ブロックされる**こと（「本人確認が未完了です」）。
-3. 本人確認後に「精算を確定」（受領/支払現金を入力）→ settlements 作成・kobutsu_daicho が買取件数分生成・案件が closed。
-4. 顧客名を後から変更しても、台帳（kobutsu_daicho）の customer_name は**変わらない**（取引時点スナップショット）。
-5. 回収のみの案件は本人確認なしで精算でき、台帳は0件。
+### ★ 古物台帳の自動記帳は現在オフ（2026-08-18〜）
+運用を優先し、精算時の `kobutsu_daicho` 生成を止めた。テーブル・既存行・組み立てロジック
+（`lib/settlement.ts` の `buildDaichoRows`）は温存してあるので、**買取明細＋顧客情報＋本人確認記録から
+後でまとめて再生成できる**。古物営業法の帳簿義務（3年保存）は残るため、記帳を再開する判断は別途行うこと。
 
-### 古物台帳の確認・運用
+### E2E（実機）
+1. 買取明細のある案件で「本人確認を実施」→ 身分証撮影＋確認方法＋職業＋生年を保存（記録は継続）。
+2. 「精算を確定」（受領/支払現金を入力）→ settlements 作成・案件が closed。本人確認の有無で止まらない。
+3. 回収のみの案件も同様に精算できる。
+
+### 古物台帳の確認（既存行がある場合）
 ```sql
 select transaction_date, item_description, item_characteristics, quantity, price,
        customer_name, customer_address, customer_occupation, customer_age, verification_method
@@ -133,7 +143,7 @@ from kobutsu_daicho order by transaction_date desc;
 - フィーは精算時に1回だけ生成（冪等）。生成後は率を変えても再計算しない。
 - 会社の支払い先は pay_to（直=ambassador / TK経由=tk）。tk_portion/ambassador_portion は記録のみ。
 
-## 7. テスト一覧（現状29件）
+## 7. テスト一覧（現状81件 / 13ファイル・`npm run test` で確認）
 - `lib/fee.test.ts` — 紹介フィー計算（3件）
 - `lib/settlement.test.ts` — 古物台帳の組み立て（2件）
 - `lib/money.test.ts` — netAmount / grossProfit / sumCosts を含む（16件）
