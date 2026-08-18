@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { sheetsEnabled, readSheet, updateCells } from "@/lib/gsheets";
 
 // 予約リードタブの列: A流入元 B紹介元コード C氏名 D電話 E郵便番号 F住所 G状態 H取込済 I顧客番号
+//                     J相談内容 K希望時間帯 L紹介者名 M受信日時
 const TAB = "予約リード";
 
 // 流入元テキスト → cases.source（enum: phone/line/email/referral に丸める。細かい区分はシート側に残す）
@@ -40,11 +41,16 @@ export async function POST(req: Request) {
     const zip = (r[4] ?? "").trim();
     const addr = (r[5] ?? "").trim();
     const importedFlag = (r[7] ?? "").trim();
+    const inquiry = (r[9] ?? "").trim();
+    const callTime = (r[10] ?? "").trim();
 
     if (importedFlag) continue; // 取込済はスキップ
     if (!name) continue; // 氏名が無い行はスキップ
 
     const fullAddr = [zip ? `〒${zip}` : "", addr].filter(Boolean).join(" ");
+    // 相談内容＋希望時間帯を希望品目欄にまとめる（要対応カードに表示される）
+    const desiredItems =
+      [inquiry, callTime ? `連絡可能: ${callTime}` : ""].filter(Boolean).join(" ／ ") || null;
     try {
       const cins = await db
         .from("customers")
@@ -60,6 +66,7 @@ export async function POST(req: Request) {
           status: "reserved",
           visit_at: null,
           source: mapSource(ryunyuu, Boolean(refCode)),
+          desired_items: desiredItems,
           registered_by: guard.staff.id,
         })
         .select("id")
