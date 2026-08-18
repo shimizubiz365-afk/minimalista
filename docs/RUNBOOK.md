@@ -78,6 +78,23 @@ curl -s -o /dev/null -w "%{http_code}\n" -X POST https://project-b3jrn.vercel.ap
 7日間アクセスが無いとプロジェクトが自動で一時停止し、**DNSごと引けなくなる**（＝全機能が落ちる）。
 復帰は Studio の Restore。実運用に入るなら Pro（$25/月）にすると停止しなくなる。
 
+## 4a. 本番スキーマのズレ（migrations と一致していない箇所）
+
+Phase1 のテーブル群は 0001 の定義とは別の手順で作られており、以下がズレている。
+**コード側は全て回避済み**なので実害は無いが、DDLを流す前に必ずこれを思い出すこと。
+
+| 箇所 | migrations の定義 | 本番の実態 |
+|---|---|---|
+| `cases.status` | `case_status` enum | **text**（enum型は存在しない） |
+| `documents.type` | `doc_type` enum | **text** |
+| `documents` | `issued_at` / `sent_at` / `sent_method` | 無い。代わりに `created_at` |
+| `media` | `purchase_item_id` / `collection_item_id` | 無い（Driveが正本なので紐付けは省略） |
+
+確認方法（列の型と enum はここに出る）:
+```bash
+curl -s -H "apikey: $KEY" -H "Authorization: Bearer $KEY" "$SUPABASE_URL/rest/v1/" | jq '.definitions.cases.properties.status'
+```
+
 ## 4b. 宿題（実顧客データを入れる前にやること）
 
 - [ ] **スタッフの権限分離**（現状は有効なスタッフ全員がフラット＝誰でも他人を承認でき、フィー率・フィー台帳・粗利・原価が見える）。
