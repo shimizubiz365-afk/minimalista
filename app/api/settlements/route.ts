@@ -1,7 +1,6 @@
 import { ok, fail, requireStaff } from "@/lib/api";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { sumAmounts, sumWorkFees, netAmount } from "@/lib/money";
-import { buildDaichoRows } from "@/lib/settlement";
 import { computeReferralFee } from "@/lib/fee";
 import { sheetsEnabled, appendSalesRow } from "@/lib/gsheets";
 
@@ -25,7 +24,7 @@ export async function POST(req: Request) {
   const c = await db
     .from("cases")
     .select(
-      "id, verification_method, id_media_id, referrer_ambassador_id, registered_by, customer:customers(name,address,occupation,birth_year,customer_no,phone)"
+      "id, referrer_ambassador_id, registered_by, customer:customers(name,customer_no,phone)"
     )
     .eq("id", case_id)
     .maybeSingle();
@@ -34,18 +33,11 @@ export async function POST(req: Request) {
     c.data as unknown as {
       customer: {
         name: string;
-        address: string | null;
-        occupation: string | null;
-        birth_year: number | null;
         customer_no: string | null;
         phone: string | null;
       };
     }
   ).customer;
-  const cmeta = c.data as unknown as {
-    verification_method: string | null;
-    id_media_id: string | null;
-  };
 
   const pis = await db
     .from("purchase_items")
@@ -57,13 +49,6 @@ export async function POST(req: Request) {
 
   const cis = await db.from("collection_items").select("work_fee").eq("case_id", case_id);
   if (cis.error) return fail(cis.error.message, 500);
-
-  // 本人確認の状態（買取がある場合のみ古物営業法で必要）。
-  // ハードブロックはしない（業務を止めない）。未了なら台帳は作らず警告を返す。
-  const needsVerification = purchaseItems.length > 0;
-  const verificationComplete = Boolean(
-    cmeta.verification_method && cust.occupation && cust.birth_year
-  );
 
   const buy_total = sumAmounts(purchaseItems);
   const work_total = sumWorkFees(cis.data ?? []);
@@ -83,25 +68,6 @@ export async function POST(req: Request) {
     .select("id")
     .single();
   if (st.error) return fail(st.error.message, 500);
-
-  // 古物台帳（買取明細があり、かつ本人確認が完了している場合のみ生成）
-  let daicho_count = 0;
-  if (purchaseItems.length > 0 && verificationComplete) {
-    const txDate = new Date().toISOString().slice(0, 10);
-    const currentYear = new Date().getFullYear();
-    const rows = buildDaichoRows({
-      caseId: case_id,
-      purchaseItems,
-      customer: cust,
-      verificationMethod: cmeta.verification_method,
-      idMediaId: cmeta.id_media_id,
-      txDate,
-      currentYear,
-    });
-    const ins = await db.from("kobutsu_daicho").insert(rows);
-    if (ins.error) return fail("台帳生成に失敗: " + ins.error.message, 500);
-    daicho_count = rows.length;
-  }
 
   // 紹介フィー自動生成（紹介案件のみ・冪等）
   let referral_fee_total: number | null = null;
@@ -183,18 +149,11 @@ export async function POST(req: Request) {
     }
   }
 
-  const warning =
-    needsVerification && !verificationComplete
-      ? "本人確認が未了のため、古物台帳は未生成です。買取は本人確認の完了が必要です（後から実施してください）。"
-      : null;
-
   return ok({
     buy_total,
     work_total,
     net_amount,
     cash_settled,
-    daicho_count,
     referral_fee_total,
-    warning,
   });
 }

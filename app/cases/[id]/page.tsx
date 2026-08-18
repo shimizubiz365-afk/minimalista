@@ -124,7 +124,7 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
     }
     setSettling(true);
     setMsg(undefined);
-    const r = await apiFetch<{ daicho_count: number; warning?: string | null }>(
+    const r = await apiFetch<{ net_amount: number }>(
       "/api/settlements",
       {
         method: "POST",
@@ -133,10 +133,7 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
     );
     setSettling(false);
     if (r.ok) {
-      setMsg(
-        `精算確定（台帳${r.data!.daicho_count}件生成）` +
-          (r.data!.warning ? `\n⚠ ${r.data!.warning}` : "")
-      );
+      setMsg("精算を確定しました");
       load();
     } else setMsg(r.error);
   }
@@ -192,12 +189,12 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
           </select>
         </Field>
 
-        {/* 本人確認（買取がある場合のみ古物営業法で必要） */}
+        {/* 本人確認（買取時の身分証記録。台帳の自動記帳は現在オフ） */}
         <Card>
           <h2 className="text-base font-semibold mb-2">本人確認</h2>
           {d.purchase_items.length === 0 ? (
             <p className="text-sm text-muted">
-              回収のみの案件のため本人確認は不要です（そのまま精算できます）。
+              回収のみの案件のため本人確認は不要です。
             </p>
           ) : d.case.verification_method ? (
             <p className="text-sm text-success flex items-center gap-1.5">
@@ -211,8 +208,8 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
               >
                 本人確認を実施 <ChevronRight className="w-4 h-4" />
               </Link>
-              <p className="text-xs text-warning">
-                買取があるため、古物台帳の生成には本人確認が必要です（未了でも精算はできます）。
+              <p className="text-xs text-muted">
+                買取がある案件です。身分証を記録しておくと後から台帳を作れます（未了でも精算はできます）。
               </p>
             </div>
           )}
@@ -516,7 +513,7 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
                 loadingText="精算中..."
                 className="mt-3"
               >
-                精算を確定する（台帳生成・クローズ）
+                精算を確定する（案件をクローズ）
               </Button>
             </>
           )}
