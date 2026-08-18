@@ -1,25 +1,22 @@
 import { cn } from "@/lib/cn";
+import { CASE_STATUS_LABELS, PRODUCT_STATUS_LABELS, label } from "@/lib/labels";
 
-// GENBA の実ステータス語彙 → 色マップ (DB は非変更、表示のみ)
-const CASE_STATUS: Record<
-  string,
-  { label: string; dot: string; text: string; pulse?: boolean }
-> = {
-  reserved: { label: "予約", dot: "bg-info", text: "text-info" },
-  visiting: { label: "訪問中", dot: "bg-primary", text: "text-primary", pulse: true },
-  visited: { label: "訪問完了", dot: "bg-success", text: "text-success" },
-  closed: { label: "精算済み", dot: "bg-muted", text: "text-muted" },
-  canceled: { label: "キャンセル", dot: "bg-subtle", text: "text-subtle" },
+// 色だけを持つ。表示名は lib/labels.ts が唯一の正（二重管理で食い違うのを防ぐ）。
+const CASE_STATUS: Record<string, { dot: string; text: string; pulse?: boolean }> = {
+  reserved: { dot: "bg-info", text: "text-info" },
+  visiting: { dot: "bg-primary", text: "text-primary", pulse: true },
+  visited: { dot: "bg-success", text: "text-success" },
+  pending_pickup: { dot: "bg-warning", text: "text-warning" },
+  revisit: { dot: "bg-primary", text: "text-primary" },
+  closed: { dot: "bg-muted", text: "text-muted" },
+  cancelled: { dot: "bg-subtle", text: "text-subtle" },
 };
 
 // 商品ステータス
-const PRODUCT_STATUS: Record<
-  string,
-  { label: string; dot: string; text: string }
-> = {
-  in_stock: { label: "在庫", dot: "bg-info", text: "text-info" },
-  listed: { label: "出品中", dot: "bg-warning", text: "text-warning" },
-  sold: { label: "売約", dot: "bg-success", text: "text-success" },
+const PRODUCT_STATUS: Record<string, { dot: string; text: string }> = {
+  in_stock: { dot: "bg-info", text: "text-info" },
+  listed: { dot: "bg-warning", text: "text-warning" },
+  sold: { dot: "bg-success", text: "text-success" },
 };
 
 type Props = {
@@ -29,8 +26,10 @@ type Props = {
 
 export function StatusBadge({ status, kind = "case" }: Props) {
   const map = kind === "product" ? PRODUCT_STATUS : CASE_STATUS;
-  const c = map[status] ?? { label: status, dot: "bg-subtle", text: "text-subtle" };
+  const labels = kind === "product" ? PRODUCT_STATUS_LABELS : CASE_STATUS_LABELS;
+  const c = map[status] ?? { dot: "bg-subtle", text: "text-subtle" };
   const pulse = (c as { pulse?: boolean }).pulse;
+  const text = label(labels, status);
   return (
     <span className={cn("inline-flex items-center gap-1.5 text-xs", c.text)}>
       <span
@@ -40,7 +39,7 @@ export function StatusBadge({ status, kind = "case" }: Props) {
           pulse && "animate-pulse-dot"
         )}
       />
-      {c.label}
+      {text}
     </span>
   );
 }

@@ -86,7 +86,10 @@ export default function Home() {
 
   const tk = todayKey();
   const todays = rows.filter((c) => c.visit_at?.startsWith(tk));
-  const doneToday = todays.filter((c) => c.status === "closed").length;
+  // 「完了」= 訪問を終えた案件（訪問完了 or 精算まで済んだ完了）
+  const doneToday = todays.filter(
+    (c) => c.status === "visited" || c.status === "closed"
+  ).length;
   const pending = rows.filter((c) => !c.visit_at && c.status === "reserved");
 
   const initial = name ? name.slice(0, 1) : "−";

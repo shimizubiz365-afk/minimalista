@@ -1,13 +1,25 @@
 // DB内部値（英語）→ 画面表示（日本語）の変換。表示専用。値そのものは英語のまま保存する。
 
+// 画面に出す案件ステータス。visiting は選択肢から外したが、既存行の表示のため残す。
 export const CASE_STATUS_LABELS: Record<string, string> = {
-  reserved: "予約",
-  visiting: "訪問中",
+  reserved: "確定",
   visited: "訪問完了",
   pending_pickup: "回収待ち",
-  closed: "完了（クローズ）",
+  revisit: "再訪問",
+  closed: "完了",
   cancelled: "キャンセル",
+  visiting: "訪問中",
 };
+
+// 案件詳細のセレクトと一覧タブに出す順序（= 現場の進み順）
+export const CASE_STATUS_FLOW = [
+  "reserved",
+  "visited",
+  "pending_pickup",
+  "revisit",
+  "closed",
+  "cancelled",
+] as const;
 
 export const PRODUCT_STATUS_LABELS: Record<string, string> = {
   in_stock: "在庫",

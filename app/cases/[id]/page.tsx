@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { apiFetch } from "@/lib/liffClient";
 import { formatYen, taxBreakdown, type TaxMode } from "@/lib/money";
-import { label, CASE_STATUS_LABELS } from "@/lib/labels";
+import { label, CASE_STATUS_LABELS, CASE_STATUS_FLOW } from "@/lib/labels";
 import { AppHeader } from "@/components/app-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,7 +30,6 @@ type Detail = {
   purchase_items: { id: string; name: string; amount: number }[];
   collection_items: { id: string; item_name: string; work_fee: number }[];
 };
-const STATUSES = ["reserved", "visiting", "pending_pickup", "closed", "cancelled"];
 
 export default function CaseDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -181,7 +180,7 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
             value={d.case.status}
             onChange={(e) => setStatus(e.target.value)}
           >
-            {STATUSES.map((st) => (
+            {CASE_STATUS_FLOW.map((st) => (
               <option key={st} value={st}>
                 {label(CASE_STATUS_LABELS, st)}
               </option>

@@ -7,6 +7,7 @@ import { AppHeader } from "@/components/app-header";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
 import { cn } from "@/lib/cn";
+import { CASE_STATUS_FLOW, CASE_STATUS_LABELS, label } from "@/lib/labels";
 
 type CaseRow = {
   id: string;
@@ -15,11 +16,8 @@ type CaseRow = {
   area: string | null;
   customer: { name: string; phone: string | null } | null;
 };
-const TABS = [
-  ["reserved", "予約"],
-  ["visiting", "訪問中"],
-  ["closed", "完了"],
-] as const;
+// タブ = ステータスの進み順そのもの（lib/labels.ts の CASE_STATUS_FLOW が正）
+const TABS = CASE_STATUS_FLOW.map((v) => [v, label(CASE_STATUS_LABELS, v)] as const);
 
 function fmtVisit(v: string | null) {
   if (!v) return "日時未定";
@@ -54,14 +52,14 @@ export default function CasesPage() {
         }
       />
 
-      {/* タブ */}
-      <div className="px-5 pt-4 flex gap-2">
+      {/* タブ（横スクロール。数が増えても潰れない） */}
+      <div className="px-5 pt-4 flex gap-2 overflow-x-auto scrollbar-hide">
         {TABS.map(([v, label]) => (
           <button
             key={v}
             onClick={() => setTab(v)}
             className={cn(
-              "px-4 py-1.5 rounded-full text-sm font-medium transition-colors",
+              "px-4 py-1.5 rounded-full text-sm font-medium transition-colors shrink-0",
               tab === v
                 ? "bg-primary text-white"
                 : "bg-surface border border-border text-muted"
