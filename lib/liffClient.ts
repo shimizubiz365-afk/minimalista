@@ -23,10 +23,11 @@ export function getIdToken(): string | null {
   }
 }
 
+// status も返す（401=スタッフ未登録 と 500=サーバー障害 を呼び出し側で区別するため）
 export async function apiFetch<T>(
   path: string,
   init: RequestInit = {}
-): Promise<{ ok: boolean; data?: T; error?: string }> {
+): Promise<{ ok: boolean; data?: T; error?: string; status?: number }> {
   if (DEMO) return demoResponse<T>(path, init);
   const token = getIdToken();
   const headers = new Headers(init.headers);
@@ -35,5 +36,11 @@ export async function apiFetch<T>(
     headers.set("Content-Type", "application/json");
   }
   const res = await fetch(path, { ...init, headers });
-  return (await res.json()) as { ok: boolean; data?: T; error?: string };
+  try {
+    const json = (await res.json()) as { ok: boolean; data?: T; error?: string };
+    return { ...json, status: res.status };
+  } catch {
+    // JSON以外（プラットフォームのエラーページ等）が返ってきた場合
+    return { ok: false, error: `サーバーエラー (${res.status})`, status: res.status };
+  }
 }

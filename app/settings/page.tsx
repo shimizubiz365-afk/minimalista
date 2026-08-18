@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { UserRound, ChevronRight, Check } from "lucide-react";
+import { UserRound, ChevronRight, Check, UserPlus } from "lucide-react";
 import { apiFetch } from "@/lib/liffClient";
 import { AppHeader } from "@/components/app-header";
 import { Card } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { inputClass } from "@/components/ui/field";
 
 type Me = { id: string; name: string; line_user_id: string; active: boolean };
+type Staff = { id: string; name: string };
 
 const links = [
   { href: "/settings/tk", label: "TK（総代理店）" },
@@ -19,6 +20,8 @@ const links = [
 
 export default function SettingsPage() {
   const [me, setMe] = useState<Me>();
+  const [pending, setPending] = useState<Staff[]>([]);
+  const [approving, setApproving] = useState<string>();
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -30,7 +33,24 @@ export default function SettingsPage() {
         setName(r.data.name);
       }
     });
+    loadPending();
   }, []);
+
+  async function loadPending() {
+    const r = await apiFetch<Staff[]>("/api/staff?status=pending");
+    if (r.ok) setPending(r.data ?? []);
+  }
+
+  // 承認 = active を true に。これで初めてそのスタッフのAPIが通るようになる。
+  async function approve(id: string) {
+    setApproving(id);
+    const r = await apiFetch(`/api/staff/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ active: true }),
+    });
+    setApproving(undefined);
+    if (r.ok) loadPending();
+  }
 
   async function saveName() {
     if (!name.trim() || name.trim() === me?.name) return;
@@ -88,6 +108,35 @@ export default function SettingsPage() {
           </p>
         </Card>
       </section>
+
+      {/* 承認待ちスタッフ（申請があるときだけ出す） */}
+      {pending.length > 0 && (
+        <section className="px-5 pt-6">
+          <h2 className="text-sm font-semibold text-muted mb-3 flex items-center gap-1.5">
+            <UserPlus className="w-4 h-4" /> 承認待ちのスタッフ {pending.length}件
+          </h2>
+          <div className="space-y-2">
+            {pending.map((p) => (
+              <Card key={p.id}>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-medium">{p.name}</span>
+                  <Button
+                    onClick={() => approve(p.id)}
+                    loading={approving === p.id}
+                    loadingText=""
+                    className="w-auto px-4 h-10 text-sm"
+                  >
+                    承認する
+                  </Button>
+                </div>
+              </Card>
+            ))}
+          </div>
+          <p className="text-xs text-subtle mt-2">
+            承認するとそのスタッフはアプリを使えるようになります。
+          </p>
+        </section>
+      )}
 
       {/* 管理メニュー */}
       <section className="px-5 pt-6">
