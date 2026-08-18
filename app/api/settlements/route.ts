@@ -25,7 +25,7 @@ export async function POST(req: Request) {
   const c = await db
     .from("cases")
     .select(
-      "id, verification_method, id_media_id, referrer_ambassador_id, customer:customers(name,address,occupation,birth_year,customer_no,phone)"
+      "id, verification_method, id_media_id, referrer_ambassador_id, registered_by, customer:customers(name,address,occupation,birth_year,customer_no,phone)"
     )
     .eq("id", case_id)
     .maybeSingle();
@@ -153,6 +153,14 @@ export async function POST(req: Request) {
     .eq("id", case_id);
   if (cl.error) return fail(cl.error.message, 500);
 
+  // 担当者名（cases.registered_by → staff.name）。売上の誰の数字か分かるように。
+  const assigneeId = (c.data as unknown as { registered_by: string | null }).registered_by;
+  let staffName = "";
+  if (assigneeId) {
+    const sname = await db.from("staff").select("name").eq("id", assigneeId).maybeSingle();
+    staffName = sname.data?.name ?? "";
+  }
+
   // GENBA 管理表「売上」タブへ1行追記（任意・失敗しても精算は成立）
   if (sheetsEnabled()) {
     try {
@@ -167,6 +175,7 @@ export async function POST(req: Request) {
         net: net_amount,
         cashSettled: cash_settled,
         referralFee: referral_fee_total,
+        staffName,
         status: "精算済み",
       });
     } catch {
