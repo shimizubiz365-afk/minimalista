@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState, use } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Phone, CalendarPlus, ChevronRight } from "lucide-react";
 import { apiFetch } from "@/lib/liffClient";

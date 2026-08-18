@@ -64,7 +64,6 @@ export default function Home() {
       .getProfile()
       .then((p) => setName(p.displayName ?? ""))
       .catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function importLeads() {

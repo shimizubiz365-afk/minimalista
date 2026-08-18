@@ -26,6 +26,11 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  async function loadPending() {
+    const r = await apiFetch<Staff[]>("/api/staff?status=pending");
+    if (r.ok) setPending(r.data ?? []);
+  }
+
   useEffect(() => {
     apiFetch<Me>("/api/me").then((r) => {
       if (r.ok && r.data) {
@@ -35,11 +40,6 @@ export default function SettingsPage() {
     });
     loadPending();
   }, []);
-
-  async function loadPending() {
-    const r = await apiFetch<Staff[]>("/api/staff?status=pending");
-    if (r.ok) setPending(r.data ?? []);
-  }
 
   // 承認 = active を true に。これで初めてそのスタッフのAPIが通るようになる。
   async function approve(id: string) {

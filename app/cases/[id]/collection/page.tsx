@@ -6,6 +6,8 @@ import { apiFetch } from "@/lib/liffClient";
 import { AppHeader } from "@/components/app-header";
 import { Button } from "@/components/ui/button";
 import { Field, inputClass } from "@/components/ui/field";
+import { useDraft } from "@/lib/draft";
+import { DraftBanner } from "@/components/draft-banner";
 
 export default function CollectionInput({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -16,8 +18,13 @@ export default function CollectionInput({ params }: { params: Promise<{ id: stri
   const [file, setFile] = useState<File | null>(null);
   const [msg, setMsg] = useState<string>();
   const [saving, setSaving] = useState(false);
+  const draft = useDraft(`collection:${id}`, { form, sign }, (v) => {
+    setForm(v.form);
+    setSign(v.sign);
+  });
 
-  async function save() {
+  // next=true なら保存後もこの画面に留まり、続けて次の品目を入力できる
+  async function save(next = false) {
     const parsed = parseInt(form.work_fee, 10);
     const work_fee = isNaN(parsed) ? NaN : Math.abs(parsed) * sign;
     if (!form.item_name || isNaN(work_fee)) {
@@ -47,7 +54,15 @@ export default function CollectionInput({ params }: { params: Promise<{ id: stri
           return;
         }
       }
-      router.push(`/cases/${id}`);
+      draft.clear();
+      if (next) {
+        setForm({ item_name: "", work_fee: "" });
+        setSign(1);
+        setFile(null);
+        setMsg("保存しました。続けて入力できます");
+      } else {
+        router.push(`/cases/${id}`);
+      }
     } finally {
       setSaving(false);
     }
@@ -56,6 +71,7 @@ export default function CollectionInput({ params }: { params: Promise<{ id: stri
   return (
     <main>
       <AppHeader title="作業依頼書 入力" backHref={`/cases/${id}`} />
+      {draft.restored && <DraftBanner onDiscard={draft.discard} />}
       <section className="px-5 pt-6 space-y-4">
         <Field label="回収品目" required>
           <input
@@ -120,7 +136,15 @@ export default function CollectionInput({ params }: { params: Promise<{ id: stri
           </label>
         </Field>
         {msg && <p className="text-danger text-sm">{msg}</p>}
-        <Button onClick={save} size="lg" loading={saving} loadingText="保存中...">
+        <Button
+          variant="secondary"
+          onClick={() => save(true)}
+          loading={saving}
+          loadingText="保存中..."
+        >
+          保存して次を入力
+        </Button>
+        <Button onClick={() => save(false)} size="lg" loading={saving} loadingText="保存中...">
           保存
         </Button>
       </section>

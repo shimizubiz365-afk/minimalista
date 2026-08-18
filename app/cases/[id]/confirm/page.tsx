@@ -9,6 +9,8 @@ import { AppHeader } from "@/components/app-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field, inputClass, textareaClass } from "@/components/ui/field";
+import { useDraft } from "@/lib/draft";
+import { DraftBanner } from "@/components/draft-banner";
 
 type Detail = {
   case: {
@@ -76,8 +78,21 @@ export default function ConfirmReservation({
         if (sp.zip && !sp.rest) lookupZip(sp.zip);
       } else setMsg(r.error);
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // サーバーから案件を読み終えてから下書きを有効にする（読込前の空欄を基準にしない）
+  const draft = useDraft(
+    d ? `confirm:${id}` : null,
+    { zip, addr, desired, visitAt, memo, assignee },
+    (v) => {
+      setZip(v.zip);
+      setAddr(v.addr);
+      setDesired(v.desired);
+      setVisitAt(v.visitAt);
+      setMemo(v.memo);
+      setAssignee(v.assignee);
+    }
+  );
 
   async function confirm() {
     if (!visitAt) {
@@ -97,13 +112,16 @@ export default function ConfirmReservation({
       }),
     });
     setSaving(false);
-    if (r.ok) router.push("/");
-    else setMsg(r.error);
+    if (r.ok) {
+      draft.clear();
+      router.push("/");
+    } else setMsg(r.error);
   }
 
   return (
     <main className="pb-6">
       <AppHeader title="予約確定" backHref="/" />
+      {draft.restored && <DraftBanner onDiscard={draft.discard} />}
 
       {!d && <p className="px-5 pt-6 text-sm text-muted">読み込み中…</p>}
 

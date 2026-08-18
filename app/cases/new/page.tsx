@@ -8,6 +8,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field, inputClass } from "@/components/ui/field";
 import { cn } from "@/lib/cn";
+import { useDraft } from "@/lib/draft";
+import { DraftBanner } from "@/components/draft-banner";
 
 type Cust = {
   id: string;
@@ -35,6 +37,18 @@ export default function NewCasePage() {
   const [saving, setSaving] = useState(false);
   const [ambassadors, setAmbassadors] = useState<{ id: string; name: string }[]>([]);
   const [ambId, setAmbId] = useState("");
+
+  // 入力途中の自動保存（電話中にLINEが裏に回っても消えないように）
+  const draft = useDraft(
+    "case-new",
+    { phone, form, existingId: existingId ?? "", ambId },
+    (v) => {
+      setPhone(v.phone);
+      setForm(v.form);
+      setExistingId(v.existingId || undefined);
+      setAmbId(v.ambId);
+    }
+  );
 
   useEffect(() => {
     apiFetch<{ id: string; name: string }[]>("/api/ambassadors").then(
@@ -69,7 +83,10 @@ export default function NewCasePage() {
         method: "POST",
         body: JSON.stringify(body),
       });
-      if (r.ok) router.push(`/cases/${r.data!.id}`);
+      if (r.ok) {
+        draft.clear();
+        router.push(`/cases/${r.data!.id}`);
+      }
       else setErr(r.error);
     } finally {
       setSaving(false);
@@ -79,6 +96,7 @@ export default function NewCasePage() {
   return (
     <main>
       <AppHeader title="予約登録" backHref="/cases" />
+      {draft.restored && <DraftBanner onDiscard={draft.discard} />}
       <section className="px-5 pt-6 space-y-4">
         <Field label="電話番号">
           <div className="flex gap-2">

@@ -6,6 +6,8 @@ import { apiFetch } from "@/lib/liffClient";
 import { AppHeader } from "@/components/app-header";
 import { Button } from "@/components/ui/button";
 import { Field, inputClass } from "@/components/ui/field";
+import { useDraft } from "@/lib/draft";
+import { DraftBanner } from "@/components/draft-banner";
 
 export default function PurchaseInput({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -14,8 +16,10 @@ export default function PurchaseInput({ params }: { params: Promise<{ id: string
   const [file, setFile] = useState<File | null>(null);
   const [msg, setMsg] = useState<string>();
   const [saving, setSaving] = useState(false);
+  const draft = useDraft(`purchase:${id}`, form, setForm);
 
-  async function save() {
+  // next=true なら保存後もこの画面に留まり、続けて次の品を入力できる
+  async function save(next = false) {
     const amount = parseInt(form.amount, 10);
     if (!form.name || isNaN(amount)) {
       setMsg("品名と金額は必須");
@@ -51,7 +55,14 @@ export default function PurchaseInput({ params }: { params: Promise<{ id: string
           return;
         }
       }
-      router.push(`/cases/${id}`);
+      draft.clear();
+      if (next) {
+        setForm({ name: "", brand: "", model: "", condition: "", amount: "" });
+        setFile(null);
+        setMsg("保存しました。続けて入力できます");
+      } else {
+        router.push(`/cases/${id}`);
+      }
     } finally {
       setSaving(false);
     }
@@ -60,6 +71,7 @@ export default function PurchaseInput({ params }: { params: Promise<{ id: string
   return (
     <main>
       <AppHeader title="買取入力" backHref={`/cases/${id}`} />
+      {draft.restored && <DraftBanner onDiscard={draft.discard} />}
       <section className="px-5 pt-6 space-y-4">
         <Field label="品名" required>
           <input
@@ -119,7 +131,15 @@ export default function PurchaseInput({ params }: { params: Promise<{ id: string
           </label>
         </Field>
         {msg && <p className="text-danger text-sm">{msg}</p>}
-        <Button onClick={save} size="lg" loading={saving} loadingText="保存中...">
+        <Button
+          variant="secondary"
+          onClick={() => save(true)}
+          loading={saving}
+          loadingText="保存中..."
+        >
+          保存して次を入力
+        </Button>
+        <Button onClick={() => save(false)} size="lg" loading={saving} loadingText="保存中...">
           保存
         </Button>
       </section>
