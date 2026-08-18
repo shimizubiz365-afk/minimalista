@@ -56,9 +56,34 @@ update staff set line_user_id = 'Uxxxxxxxx...' where name = 'Shun';
 
 ## 4. デプロイ
 
-- Vercel 推奨（Next.js 16）。環境変数を Vercel に設定。
+**GitHub連携は入っていない。push しても本番は変わらない。**
+本番はこのマシンから Vercel CLI で直接デプロイする。
+
+```bash
+vercel login          # トークンは切れるので都度（対話式）
+vercel --prod --yes   # project-b3jrn.vercel.app に反映
+```
+
+反映確認（新ルートが 404 でなくなるかを見る）:
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" -X POST https://project-b3jrn.vercel.app/api/staff/register  # 401ならOK
+```
+
+- 環境変数は Vercel 側にも登録が要る（`vercel env ls production` で確認）。`.env.local` に足したら本番にも足す。
+- LIFF の Endpoint URL は `https://project-b3jrn.vercel.app` 固定。デプロイしてもURLは変わらない。
 - `@react-pdf/renderer` はサーバー（Node ランタイム）で動く。API route はデフォルトで Node 実行。
 - フォント `public/fonts/NotoSansJP-Regular.ttf` はリポジトリに含まれている（`process.cwd()/public/fonts` から読む）。
+
+### Supabase（無料プラン）の注意
+7日間アクセスが無いとプロジェクトが自動で一時停止し、**DNSごと引けなくなる**（＝全機能が落ちる）。
+復帰は Studio の Restore。実運用に入るなら Pro（$25/月）にすると停止しなくなる。
+
+## 4b. 宿題（実顧客データを入れる前にやること）
+
+- [ ] **スタッフの権限分離**（現状は有効なスタッフ全員がフラット＝誰でも他人を承認でき、フィー率・フィー台帳・粗利・原価が見える）。
+      `staff` に role 列を足して admin / staff を分ける。2026-08-18 時点では少人数のため意図的に未実装。
+- [ ] 予約リード取込の自動化（現在はホームの手動ボタンのみ）
+- [ ] 顧客コード体系（設計は `T01-A03-屋号-0001` / `D-0001`、実装は `C-000001`。第4歩が未着手）
 
 ## 5. 手動E2E（受け入れ基準）
 
