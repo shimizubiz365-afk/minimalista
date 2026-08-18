@@ -8,7 +8,7 @@ export async function GET(req: Request) {
   let q = supabaseAdmin()
     .from("cases")
     .select(
-      "id,status,visit_at,area,desired_items,source,memo,customer:customers(id,customer_no,name,phone)"
+      "id,status,visit_at,area,desired_items,source,memo,registered_by,customer:customers(id,customer_no,name,phone)"
     )
     .order("visit_at", { ascending: true });
   if (status) q = q.eq("status", status);

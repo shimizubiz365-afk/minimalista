@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import liff from "@line/liff";
 import Link from "next/link";
-import { ArrowRight, Phone, ChevronRight, Download } from "lucide-react";
+import { ArrowRight, Phone, ChevronRight, Download, CalendarCheck } from "lucide-react";
 import { apiFetch } from "@/lib/liffClient";
 import { AppHeader } from "@/components/app-header";
 import { Card } from "@/components/ui/card";
@@ -92,7 +92,7 @@ export default function Home() {
   const initial = name ? name.slice(0, 1) : "−";
 
   return (
-    <main>
+    <main className="pb-24">
       <AppHeader
         showLogo
         right={
@@ -134,6 +134,54 @@ export default function Home() {
       <div className="border-t border-border mx-5" />
 
       {err && <p className="px-5 pt-4 text-danger text-sm">{err}</p>}
+
+      {/* 要対応（最優先・上部に表示） */}
+      {pending.length > 0 && (
+        <section className="px-5 pt-6 pb-2">
+          <div className="flex items-baseline justify-between mb-4">
+            <h2 className="text-lg font-semibold">要対応</h2>
+            <span className="text-sm text-muted">{pending.length}件</span>
+          </div>
+          {pending.map((c) => (
+            <Card key={c.id} className="mb-3">
+              <Link
+                href={`/cases/${c.id}/confirm`}
+                className="flex items-start justify-between gap-2"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 text-xs text-warning mb-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse-dot" />
+                    日程未確定
+                  </div>
+                  <h3 className="text-lg font-semibold mb-1">
+                    {c.customer?.name ?? "（顧客未設定）"} 様
+                  </h3>
+                  {c.desired_items && (
+                    <p className="text-xs text-muted">{c.desired_items}</p>
+                  )}
+                </div>
+                <ChevronRight className="w-5 h-5 text-subtle shrink-0 mt-0.5" />
+              </Link>
+              <div className="mt-3 flex gap-2">
+                {c.customer?.phone && (
+                  <a
+                    href={`tel:${c.customer.phone}`}
+                    className="flex-1 h-12 text-white rounded-md font-medium text-base flex items-center justify-center gap-2 bg-warning active:bg-warning/90"
+                  >
+                    <Phone className="w-4 h-4" /> 電話
+                  </a>
+                )}
+                <Link
+                  href={`/cases/${c.id}/confirm`}
+                  className="flex-1 h-12 text-white rounded-md font-medium text-base flex items-center justify-center gap-2 bg-primary active:bg-primary/90"
+                >
+                  <CalendarCheck className="w-4 h-4" /> 予約確定
+                </Link>
+              </div>
+            </Card>
+          ))}
+        </section>
+      )}
 
       {/* 今日の訪問 */}
       <section className="px-5 pt-6 pb-2">
@@ -191,62 +239,25 @@ export default function Home() {
         )}
       </section>
 
-      {/* 要対応 */}
-      {pending.length > 0 && (
-        <>
-          <div className="border-t border-border mx-5 my-4" />
-          <section className="px-5 pb-2">
-            <div className="flex items-baseline justify-between mb-4">
-              <h2 className="text-lg font-semibold">要対応</h2>
-              <span className="text-sm text-muted">{pending.length}件</span>
-            </div>
-            {pending.map((c) => (
-              <Card key={c.id} className="mb-3">
-                <Link
-                  href={`/cases/${c.id}`}
-                  className="flex items-start justify-between gap-2"
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5 text-xs text-warning mb-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse-dot" />
-                      日程未確定
-                    </div>
-                    <h3 className="text-lg font-semibold mb-1">
-                      {c.customer?.name ?? "（顧客未設定）"} 様
-                    </h3>
-                    {c.desired_items && (
-                      <p className="text-xs text-muted">{c.desired_items}</p>
-                    )}
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-subtle shrink-0 mt-0.5" />
-                </Link>
-                {c.customer?.phone && (
-                  <a
-                    href={`tel:${c.customer.phone}`}
-                    className="mt-3 w-full h-12 text-white rounded-md font-medium text-base flex items-center justify-center gap-2 bg-warning active:bg-warning/90"
-                  >
-                    <Phone className="w-4 h-4" /> {c.customer.phone} に電話
-                  </a>
-                )}
-              </Card>
-            ))}
-          </section>
-        </>
-      )}
-
       {/* クイックリンク */}
       <section className="px-5 pt-4 pb-8 grid grid-cols-2 gap-3">
+        <Card href="/calendar" className="text-center">
+          <span className="text-sm font-medium">カレンダー</span>
+        </Card>
+        <Card href="/customers" className="text-center">
+          <span className="text-sm font-medium">顧客検索</span>
+        </Card>
         <Card href="/cases" className="text-center">
           <span className="text-sm font-medium">案件一覧</span>
-        </Card>
-        <Card href="/products" className="text-center">
-          <span className="text-sm font-medium">在庫一覧</span>
         </Card>
         <Card href="/fees" className="text-center">
           <span className="text-sm font-medium">フィー台帳</span>
         </Card>
         <Card href="/cases/new" className="text-center">
           <span className="text-sm font-medium text-primary">＋ 予約登録</span>
+        </Card>
+        <Card href="/settings" className="text-center">
+          <span className="text-sm font-medium">設定</span>
         </Card>
       </section>
     </main>

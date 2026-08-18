@@ -15,7 +15,7 @@ import { label, CASE_STATUS_LABELS } from "@/lib/labels";
 import { AppHeader } from "@/components/app-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Field, inputClass, textareaClass } from "@/components/ui/field";
+import { Field, inputClass } from "@/components/ui/field";
 
 type Detail = {
   case: {
@@ -38,9 +38,6 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
   const [msg, setMsg] = useState<string>();
   const [pdfUrls, setPdfUrls] = useState<Record<string, string>>({});
   const [cash, setCash] = useState("");
-  const [visitAt, setVisitAt] = useState("");
-  const [memo, setMemo] = useState("");
-  const [saving, setSaving] = useState(false);
   const [taxMode, setTaxMode] = useState<TaxMode>("exclusive");
   const [issuing, setIssuing] = useState<string | null>(null);
   const [settling, setSettling] = useState(false);
@@ -60,22 +57,6 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
     const r = await apiFetch<Detail>(`/api/cases/${id}`);
     if (r.ok) {
       setD(r.data!);
-      setVisitAt(r.data!.case.visit_at ? r.data!.case.visit_at.slice(0, 16) : "");
-      setMemo(r.data!.case.memo ?? "");
-    } else setMsg(r.error);
-  }
-
-  async function saveSchedule() {
-    setSaving(true);
-    setMsg(undefined);
-    const r = await apiFetch(`/api/cases/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ visit_at: visitAt || null, memo }),
-    });
-    setSaving(false);
-    if (r.ok) {
-      setMsg("予約を確定しました");
-      load();
     } else setMsg(r.error);
   }
   useEffect(() => {
@@ -189,37 +170,13 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
           </p>
         </div>
 
-        {/* 予約・訪問日程（電話後にここで確定） */}
-        <Card>
-          <h2 className="text-base font-semibold mb-3 flex items-center gap-1.5">
-            <CalendarCheck className="w-4 h-4 text-primary" /> 予約・訪問日程
-          </h2>
-          <Field label="訪問日時">
-            <input
-              className={inputClass}
-              type="datetime-local"
-              value={visitAt}
-              onChange={(e) => setVisitAt(e.target.value)}
-            />
-          </Field>
-          <Field label="備考（通話メモ）" className="mt-3">
-            <textarea
-              className={textareaClass}
-              rows={3}
-              value={memo}
-              onChange={(e) => setMemo(e.target.value)}
-              placeholder="例: 6/27 14時で確定。マンション3F、エレベーター無し"
-            />
-          </Field>
-          <Button
-            onClick={saveSchedule}
-            loading={saving}
-            loadingText="保存中..."
-            className="mt-3"
-          >
-            <CalendarCheck className="w-4 h-4" /> {visitAt ? "予約を確定する" : "保存する"}
-          </Button>
-        </Card>
+        {/* 日程・住所・担当の編集（必要時のみ→確定画面へ。確定済みなので常設フォームは不要） */}
+        <Link
+          href={`/cases/${id}/confirm`}
+          className="h-11 rounded-md border border-border text-sm font-medium flex items-center justify-center gap-1.5 active:bg-border/40"
+        >
+          <CalendarCheck className="w-4 h-4 text-primary" /> 日程・住所・担当を編集
+        </Link>
 
         <Field label="ステータス">
           <select
