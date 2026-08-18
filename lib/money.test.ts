@@ -29,6 +29,8 @@ describe("sumWorkFees", () => {
 describe("formatYen", () => {
   it("3桁区切り+円", () => expect(formatYen(1234567)).toBe("¥1,234,567"));
   it("0", () => expect(formatYen(0)).toBe("¥0"));
+  it("マイナスは記号を先頭に出す（値引き・サービス）", () =>
+    expect(formatYen(-3000)).toBe("−¥3,000"));
 });
 
 describe("netAmount", () => {

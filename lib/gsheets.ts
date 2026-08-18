@@ -2,7 +2,6 @@
 // drive.file スコープ + OAuth refresh_token。アプリが作成・所有するシートに読み書きする。
 // 認証は gdrive.ts の accessToken を共用。
 import { accessToken } from "./gdrive";
-import { nextProductCode } from "./productCode";
 
 // シート連携が使えるか（認証 + 対象シートID）
 export function sheetsEnabled(): boolean {
@@ -99,41 +98,6 @@ export async function appendLeadRow(r: LeadRow): Promise<void> {
     r.referrer ?? "",
     r.receivedAt ?? "",
   ]);
-}
-
-// 物販タブの1行（商品が売れたタイミングで追記）。
-// 列順: 物販コード / 商品名 / 仕入れ顧客番号 / 顧客名 / 担当者 / 原価 / 売値 / 利益 / 出品先 / 売却日 / 案件ID
-export type ProductSaleRow = {
-  productName: string;
-  acquiredCustomerNo: string;
-  customerName: string;
-  staffName: string; // 担当者（買い取った営業）
-  cost: number;
-  salePrice: number;
-  profit: number;
-  channelLabel: string; // 出品先（日本語表示）
-  soldAt: string;
-  caseId: string;
-};
-
-// 物販コードはシートのA列が正本。既存の最大+1を採番して追記し、採番したコードを返す。
-export async function appendProductSaleRow(r: ProductSaleRow): Promise<string> {
-  const rows = await readSheet("物販");
-  const code = nextProductCode(rows);
-  await appendRow("物販", [
-    code,
-    r.productName,
-    r.acquiredCustomerNo,
-    r.customerName,
-    r.staffName,
-    r.cost,
-    r.salePrice,
-    r.profit,
-    r.channelLabel,
-    r.soldAt,
-    r.caseId,
-  ]);
-  return code;
 }
 
 // 指定タブの全行を読む（[0]はヘッダ行）

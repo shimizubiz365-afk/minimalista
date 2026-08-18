@@ -6,8 +6,10 @@ export function sumWorkFees(items: { work_fee: number }[]): number {
   return items.reduce((acc, i) => acc + i.work_fee, 0);
 }
 
+// マイナス（値引き・サービス）は「−¥3,000」と出す。"¥-3,000" だと帳票で読み違えやすい。
 export function formatYen(n: number): string {
-  return "¥" + n.toLocaleString("ja-JP");
+  const sign = n < 0 ? "−" : "";
+  return sign + "¥" + Math.abs(n).toLocaleString("ja-JP");
 }
 
 export function netAmount(buyTotal: number, workTotal: number): number {

@@ -8,8 +8,7 @@ export async function POST(req: Request) {
   const guard = await requireStaff(req);
   if (guard instanceof Response) return guard;
   const { case_id, cash_settled } = await req.json();
-  if (!case_id || typeof cash_settled !== "number")
-    return fail("case_id / cash_settled は必須", 400);
+  if (!case_id) return fail("case_id は必須", 400);
   const db = supabaseAdmin();
 
   // 二重確定防止
@@ -53,6 +52,10 @@ export async function POST(req: Request) {
   const buy_total = sumAmounts(purchaseItems);
   const work_total = sumWorkFees(cis.data ?? []);
   const net_amount = netAmount(buy_total, work_total);
+  // 受け渡しの現金は「買取合計 − 作業費合計」で確定する。
+  // (cash_settled を明示指定した場合だけそれを使う＝旧クライアント互換)
+  const cash =
+    typeof cash_settled === "number" ? cash_settled : net_amount;
 
   // settlements
   const st = await db
@@ -62,7 +65,7 @@ export async function POST(req: Request) {
       buy_total,
       work_total,
       net_amount,
-      cash_settled,
+      cash_settled: cash,
       settled_by: guard.staff.id,
     })
     .select("id")
@@ -139,7 +142,7 @@ export async function POST(req: Request) {
         buyTotal: buy_total,
         workTotal: work_total,
         net: net_amount,
-        cashSettled: cash_settled,
+        cashSettled: cash,
         referralFee: referral_fee_total,
         staffName,
         status: "精算済み",
@@ -153,7 +156,7 @@ export async function POST(req: Request) {
     buy_total,
     work_total,
     net_amount,
-    cash_settled,
+    cash_settled: cash,
     referral_fee_total,
   });
 }

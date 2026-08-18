@@ -10,7 +10,7 @@ import {
   CalendarCheck,
 } from "lucide-react";
 import { apiFetch } from "@/lib/liffClient";
-import { formatYen, taxBreakdown, type TaxMode } from "@/lib/money";
+import { formatYen, netAmount, taxBreakdown, type TaxMode } from "@/lib/money";
 import { label, CASE_STATUS_LABELS, CASE_STATUS_FLOW } from "@/lib/labels";
 import { AppHeader } from "@/components/app-header";
 import { Card } from "@/components/ui/card";
@@ -36,7 +36,6 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
   const [d, setD] = useState<Detail>();
   const [msg, setMsg] = useState<string>();
   const [pdfUrls, setPdfUrls] = useState<Record<string, string>>({});
-  const [cash, setCash] = useState("");
   const [taxMode, setTaxMode] = useState<TaxMode>("exclusive");
   const [issuing, setIssuing] = useState<string | null>(null);
   const [settling, setSettling] = useState(false);
@@ -115,21 +114,14 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
     if (r.ok) load();
     else setMsg(r.error);
   }
+  // 精算額は「買取合計 − 作業費合計」で確定する（自由入力はしない）。
   async function settle() {
-    const n = parseInt(cash, 10);
-    if (isNaN(n)) {
-      setMsg("受領/支払現金を入力してください");
-      return;
-    }
     setSettling(true);
     setMsg(undefined);
-    const r = await apiFetch<{ net_amount: number }>(
-      "/api/settlements",
-      {
-        method: "POST",
-        body: JSON.stringify({ case_id: id, cash_settled: n }),
-      }
-    );
+    const r = await apiFetch<{ net_amount: number }>("/api/settlements", {
+      method: "POST",
+      body: JSON.stringify({ case_id: id }),
+    });
     setSettling(false);
     if (r.ok) {
       setMsg("精算を確定しました");
@@ -149,6 +141,7 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
   const buyTotal = d.purchase_items.reduce((a, i) => a + i.amount, 0);
   const workTotal = d.collection_items.reduce((a, i) => a + i.work_fee, 0);
   const workTax = taxBreakdown(workTotal, taxMode);
+  const net = netAmount(buyTotal, workTotal);
   const editable = d.case.status !== "closed";
 
   return (
@@ -320,12 +313,20 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
                     onChange={(e) => setEdit({ ...edit, a: e.target.value })}
                   />
                   <input
-                    className={`${editCls} w-24`}
+                    className={`${editCls} w-20`}
                     type="number"
                     inputMode="numeric"
                     value={edit.b}
                     onChange={(e) => setEdit({ ...edit, b: e.target.value })}
                   />
+                  {/* 値引き・サービス用の符号反転（スマホの数字キーに「−」が無いため） */}
+                  <button
+                    onClick={() => setEdit({ ...edit, b: String(-(parseInt(edit.b, 10) || 0)) })}
+                    className="shrink-0 border border-border rounded-md w-9 h-9 text-sm font-medium"
+                    title="プラス/マイナスを切り替え"
+                  >
+                    ±
+                  </button>
                   <button
                     onClick={saveItem}
                     className="shrink-0 bg-primary text-white rounded-md px-3 h-9 text-sm font-medium"
@@ -478,14 +479,6 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
           </div>
         </Card>
 
-        {/* 在庫化 */}
-        <Card href={`/cases/${id}/products`}>
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold">この案件を商品化する</h2>
-            <ChevronRight className="w-5 h-5 text-subtle" />
-          </div>
-        </Card>
-
         {/* 精算 */}
         <Card>
           <h2 className="text-base font-semibold mb-2">精算</h2>
@@ -495,24 +488,34 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
             </p>
           ) : (
             <>
-              <Field label="受領/支払 現金（円）">
-                <input
-                  className={inputClass}
-                  type="number"
-                  inputMode="numeric"
-                  value={cash}
-                  onChange={(e) => setCash(e.target.value)}
-                  placeholder={`差引: ${formatYen(buyTotal - workTotal)}`}
-                />
-              </Field>
+              <div className="text-sm space-y-1 mb-3">
+                <div className="flex justify-between">
+                  <span className="text-muted">買取合計</span>
+                  <span>{formatYen(buyTotal)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted">作業費合計</span>
+                  <span>{formatYen(-workTotal)}</span>
+                </div>
+                <div className="flex justify-between pt-1 border-t border-border font-semibold text-base">
+                  <span>差引</span>
+                  <span>{formatYen(Math.abs(net))}</span>
+                </div>
+                <p className="text-xs text-muted pt-1">
+                  {net > 0
+                    ? "お客様へお支払いする金額です。"
+                    : net < 0
+                      ? "お客様から受領する金額です。"
+                      : "受け渡しの現金はありません。"}
+                </p>
+              </div>
               <Button
                 variant="danger"
                 onClick={settle}
                 loading={settling}
                 loadingText="精算中..."
-                className="mt-3"
               >
-                精算を確定する（案件をクローズ）
+                この金額で精算を確定する（案件をクローズ）
               </Button>
             </>
           )}

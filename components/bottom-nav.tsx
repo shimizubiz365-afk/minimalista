@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Home, Calendar, Package, Settings } from "lucide-react";
+import { Home, ClipboardList, Calendar, Settings } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 const ITEMS = [
@@ -10,14 +10,14 @@ const ITEMS = [
   {
     href: "/cases",
     label: "案件",
-    icon: Calendar,
+    icon: ClipboardList,
     match: (p: string) => p.startsWith("/cases"),
   },
   {
-    href: "/products",
-    label: "在庫",
-    icon: Package,
-    match: (p: string) => p.startsWith("/products"),
+    href: "/calendar",
+    label: "カレンダー",
+    icon: Calendar,
+    match: (p: string) => p.startsWith("/calendar"),
   },
   {
     href: "/settings",

@@ -11,12 +11,15 @@ export default function CollectionInput({ params }: { params: Promise<{ id: stri
   const { id } = use(params);
   const router = useRouter();
   const [form, setForm] = useState({ item_name: "", work_fee: "" });
+  // 値引き・サービスはマイナスの明細として入れる（スマホの数字キーに「−」が無いためトグルで符号を決める）
+  const [sign, setSign] = useState<1 | -1>(1);
   const [file, setFile] = useState<File | null>(null);
   const [msg, setMsg] = useState<string>();
   const [saving, setSaving] = useState(false);
 
   async function save() {
-    const work_fee = parseInt(form.work_fee, 10);
+    const parsed = parseInt(form.work_fee, 10);
+    const work_fee = isNaN(parsed) ? NaN : Math.abs(parsed) * sign;
     if (!form.item_name || isNaN(work_fee)) {
       setMsg("品目と作業費は必須");
       return;
@@ -63,6 +66,30 @@ export default function CollectionInput({ params }: { params: Promise<{ id: stri
           />
         </Field>
         <Field label="作業費（円）" required>
+          <div className="flex gap-2 mb-2">
+            <button
+              type="button"
+              onClick={() => setSign(1)}
+              className={`flex-1 h-9 rounded-md text-sm font-medium border ${
+                sign === 1
+                  ? "bg-primary text-white border-primary"
+                  : "bg-surface text-fg border-border"
+              }`}
+            >
+              請求（＋）
+            </button>
+            <button
+              type="button"
+              onClick={() => setSign(-1)}
+              className={`flex-1 h-9 rounded-md text-sm font-medium border ${
+                sign === -1
+                  ? "bg-primary text-white border-primary"
+                  : "bg-surface text-fg border-border"
+              }`}
+            >
+              値引き・サービス（−）
+            </button>
+          </div>
           <input
             className={inputClass}
             type="number"
@@ -71,6 +98,11 @@ export default function CollectionInput({ params }: { params: Promise<{ id: stri
             value={form.work_fee}
             onChange={(e) => setForm({ ...form, work_fee: e.target.value })}
           />
+          <p className="text-xs text-subtle mt-1">
+            {sign === -1
+              ? "マイナスの明細として保存され、合計から差し引かれます。"
+              : "金額はプラスで入力してください。"}
+          </p>
         </Field>
         <Field label="写真">
           <label className="w-full border border-border rounded-md px-3 h-12 bg-surface text-muted flex items-center gap-2 cursor-pointer active:bg-border/40">
